@@ -50,8 +50,15 @@ CREATE TABLE applications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   applicant_id UUID NOT NULL REFERENCES profiles ON DELETE CASCADE,
   job_posting_id UUID NOT NULL REFERENCES job_postings ON DELETE CASCADE,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'accepted', 'rejected')),
-  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  position_title TEXT NOT NULL,
+  resume_url TEXT,
+  cover_letter TEXT,
+  personal_info JSONB NOT NULL DEFAULT '{}'::jsonb,
+  requirements_data JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'under_review', 'shortlisted', 'requirements', 'hired', 'rejected')),
+  status_updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
@@ -62,6 +69,8 @@ ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 -- CREATE POLICY "admin_full_access" ON applications ...;
 -- CREATE POLICY "applicant_view_own" ON applications FOR SELECT USING (...);
 -- CREATE POLICY "applicant_create" ON applications FOR INSERT WITH CHECK (...);
+-- Suggested status flow for applicant dashboard:
+-- submitted -> under_review -> shortlisted -> requirements -> hired/rejected
 
 -- ============================================================================
 -- 4. NOTIFICATIONS TABLE

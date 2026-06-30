@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String
+  role      Role       @default(APPLICANT)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  applications Application[]
+  documents    ApplicantDocument[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+enum Role {
+  APPLICANT
+  HR_ADMIN
+}
+
+model Position {
+  id              String   @id @default(cuid())
+  title           String
+  department      String
+  employmentType  String   // Full-time, Part-time, Internship, OJT
+  description     String   @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  applications Application[]
+
+  @@map("positions")
+}
+
+model Application {
+  id                String   @id @default(cuid())
+  userId            String
+  positionId        String
+  status            ApplicationStatus @default(SUBMITTED)
+  resumePath        String
+  coverLetterPath   String?
+  portfolioUrl      String?
+  rejectionReason   String?
+  submittedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Application Details
+  phoneNumber       String?
+  homeAddress       String?
+  dateOfBirth       DateTime?
+  gender            String?
+  heardAboutUs      String?
+  preferredStartDate DateTime?
+  message           String?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position  Position  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  documents ApplicantDocument[]
+  notifications Notification[]
+
+  @@unique([userId]) // One application per user
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  REQUIREMENTS
+  HIRED
+  REJECTED
+}
+
+model Requirement {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents ApplicantDocument[]
+
+  @@map("requirements")
+}
+
+model ApplicantDocument {
+  id            String   @id @default(cuid())
+  applicationId String
+  requirementId String
+  filePath      String
+  isVerified    Boolean  @default(false)
+  uploadedAt    DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  @@unique([applicationId, requirementId])
+  @@map("applicant_documents")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  applicationId String?
+
+  @@map("notifications")
+}
