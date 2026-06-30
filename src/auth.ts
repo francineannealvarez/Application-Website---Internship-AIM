@@ -1,10 +1,12 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaClient } from "@prisma/client";
+import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
-
+ 
+// NOTE: now using the shared `db` client from src/lib/db.ts instead of
+// creating a separate `new PrismaClient()` here. Prisma 7 requires a
+// driver adapter (see db.ts), so this avoids configuring it twice.
+ 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
     CredentialsProvider({
@@ -12,24 +14,24 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password required");
         }
-
-        const user = await prisma.user.findUnique({
+ 
+        const user = await db.user.findUnique({
           where: { email: credentials.email as string },
         });
-
+ 
         if (!user) {
           throw new Error("Invalid credentials");
         }
-
+ 
         const passwordMatch = await bcrypt.compare(
           credentials.password as string,
           user.password
         );
-
+ 
         if (!passwordMatch) {
           throw new Error("Invalid credentials");
         }
-
+ 
         return {
           id: user.id,
           email: user.email,
