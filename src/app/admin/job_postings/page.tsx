@@ -1,19 +1,30 @@
+'use client'
+ 
 /**
  * src/app/admin/job_postings/page.tsx
  * ─────────────────────────────────────────────────────────────
  * Job Postings — table of all active job openings.
- * Archived jobs are excluded here (they live in /admin/archives).
+ * "+ Add New Job Opening" now opens a slide-in panel (JobFormPanel)
+ * instead of navigating to a separate /new page.
+ *
+ * Marked 'use client' because we need useState to track whether
+ * the panel is open.
+ *
  * TODO: Replace PLACEHOLDER_JOBS (from admin-theme.ts) with a real
- * Supabase query, and wire up the Archive button to actually update
- * the job's `archived` flag instead of just being a static button.
+ * Supabase/Prisma query, and wire up the Archive button.
  * ─────────────────────────────────────────────────────────────
  */
  
+import { useState } from 'react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import JobFormPanel from '@/components/admin/JobFormPanel'
 import { components, PLACEHOLDER_JOBS } from '@/lib/admin-theme'
 import Link from 'next/link'
  
 export default function JobPostingsPage() {
+  // Controls whether the "Add New Job Opening" slide-in panel is visible
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
+ 
   // Only show non-archived jobs in this main table
   const activeJobs = PLACEHOLDER_JOBS.filter((job) => !job.archived)
  
@@ -23,10 +34,10 @@ export default function JobPostingsPage() {
       {/* Page header with title + Add New Job button */}
       <div className="flex items-center justify-between">
         <h1 className={components.pageTitle}>Job Postings</h1>
-        {/* TODO: this currently links to a placeholder form page since there's no backend yet */}
-        <Link href="/admin/job_postings/new" className={components.btnPrimary}>
+        {/* Opens the slide-in panel instead of navigating to a new page */}
+        <button onClick={() => setIsPanelOpen(true)} className={components.btnPrimary}>
           + Add New Job Opening
-        </Link>
+        </button>
       </div>
       <hr className={components.pageDivider} />
  
@@ -65,7 +76,7 @@ export default function JobPostingsPage() {
                     >
                       View Applicants
                     </Link>
-                    {/* TODO: wire this up to actually set job.archived = true in Supabase */}
+                    {/* TODO: wire this up to actually set job.archived = true */}
                     <button className={components.btnNeutralSm}>
                       Archive
                     </button>
@@ -84,6 +95,10 @@ export default function JobPostingsPage() {
         </p>
       )}
  
+      {/* Slide-in panel for adding a new job */}
+      <JobFormPanel isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} />
+ 
     </AdminLayout>
   )
 }
+ 

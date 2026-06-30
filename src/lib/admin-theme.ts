@@ -235,3 +235,24 @@ export const PLACEHOLDER_JOBS = [
 ] as const
  
 export type PlaceholderJob = typeof PLACEHOLDER_JOBS[number]
+ 
+// ─── Slide-in Panel (e.g. "Add New Job Opening" drawer) ────────
+// A right-side drawer that slides in over the page, with a backdrop.
+// The header is styled the SAME as the button that opens it (solid
+// brand blue), so visually it reads as an extension of that button
+// rather than a separate disconnected popup.
+export const panel = {
+  // Dark overlay behind the panel, click to close
+  backdrop:     'fixed inset-0 bg-black/30 z-40',
+  // The sliding drawer itself — fixed to the right edge, full height
+  drawer:       'fixed top-0 right-0 h-full w-full sm:w-[480px] bg-white dark:bg-[#132435] z-50 shadow-xl flex flex-col',
+  // Header — same solid blue as the trigger button, so it reads as
+  // one continuous shape with the button that opened it
+  header:       'bg-[#00bbda] text-white px-6 py-4 flex items-center justify-between shrink-0',
+  headerTitle:  'text-base font-semibold',
+  closeBtn:     'text-white/90 hover:text-white text-xl leading-none w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 transition-colors',
+  // Scrollable form body
+  body:         'flex-1 overflow-y-auto p-6',
+  // Sticky footer for action buttons
+  footer:       'border-t border-[#e2e8ed] dark:border-[#1e3448] px-6 py-4 flex gap-3 shrink-0',
+} as const

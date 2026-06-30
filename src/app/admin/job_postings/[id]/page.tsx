@@ -3,8 +3,8 @@
  * ─────────────────────────────────────────────────────────────
  * Job Detail page — shows one job posting's info plus the list of
  * applicants who applied for it specifically.
- * TODO: Replace PLACEHOLDER_APPLICANTS_FOR_JOB with a real Supabase
- * query filtered by job_posting_id, sorted oldest-applied-first.
+ * TODO: Replace PLACEHOLDER_APPLICANTS_FOR_JOB with a real query
+ * filtered by job_posting_id, sorted oldest-applied-first.
  * ─────────────────────────────────────────────────────────────
  */
  
@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
  
 // ─── Placeholder applicant data, keyed by job id ────────────────
-// TODO: replace with a Supabase query: applications where job_posting_id = id,
+// TODO: replace with a real query: applications where job_posting_id = id,
 // joined with applicant profile info, ordered by date_applied ascending
 // (oldest first, per the HR's request).
 const PLACEHOLDER_APPLICANTS_FOR_JOB: Record<string, Array<{
@@ -104,7 +104,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
             </thead>
             <tbody className="bg-white dark:bg-[#132435]">
               {/* Sorted oldest-first since data above is already in that order;
-                  once real data comes from Supabase, sort by dateApplied ascending there. */}
+                  once real data comes from the backend, sort by dateApplied ascending there. */}
               {applicants.map((applicant) => (
                 <tr key={applicant.id} className={components.tableRow}>
                   <td className={components.tableCell}>{applicant.name}</td>
@@ -136,4 +136,3 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
     </AdminLayout>
   )
 }
- 
