@@ -281,6 +281,9 @@ export default function ApplicantDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [demoUser] = useState<DemoUser | null>(() => (typeof window !== 'undefined' ? readDemoUser() : null));
+  // TODO: /dashboard still renders from existing demo/mock/session data via getUserApplication().
+  // Once submitted applicant data is bridged into persistent storage (likely through /api/applications),
+  // fetch that record here instead of relying on the current mock/session source.
   const application = (session?.user?.id ?? demoUser?.id) ? getUserApplication((session?.user?.id ?? demoUser?.id) as string) : undefined;
   const [applicationStage, setApplicationStage] = useState(0);
   const [showHiringProcess, setShowHiringProcess] = useState(false);

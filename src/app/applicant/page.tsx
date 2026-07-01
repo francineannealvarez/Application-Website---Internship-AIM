@@ -1,6 +1,14 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+/*
+This page currently handles both the demo application form and an in-page demo dashboard view.
+This is separate from the real src/app/dashboard/page.tsx used by authenticated non-demo users.
+TODO: reconcile these into one dashboard implementation once the backend is integrated,
+or clarify if the demo experience is intentionally meant to remain simplified and separate.
+*/
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -672,15 +680,19 @@ function DashboardView({ formData }: { formData: FormData }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Root export: form first, dashboard after submission
+// Legacy dashboard view
 // ─────────────────────────────────────────────────────────────────────────
 
+// LEGACY: This in-page dashboard is kept for review only.
+// The normal submit flow now redirects to /dashboard instead of rendering this branch.
+
 export default function ApplicantDashboard() {
-  const [submittedData, setSubmittedData] = useState<FormData | null>(null)
+  const router = useRouter()
 
-  if (!submittedData) {
-    return <ApplicationForm onSubmit={(data) => setSubmittedData(data)} />
-  }
-
-  return <DashboardView formData={submittedData} />
+  return <ApplicationForm onSubmit={() => {
+    // TODO: /dashboard still shows existing demo/mock/session data here.
+    // The real bridge should use the persisted application record (likely via /api/applications)
+    // so the dashboard can render the freshly submitted data after redirect.
+    router.push('/dashboard')
+  }} />
 }

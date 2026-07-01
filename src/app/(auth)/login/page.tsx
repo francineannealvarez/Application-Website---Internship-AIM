@@ -17,7 +17,16 @@ export default function LoginPage() {
   const handleDemoLogin = (userType: 'hr' | 'applicant') => {
     const user = userType === 'hr' ? mockUsers.hrAdmin : mockUsers.applicant1;
     writeDemoUser(user);
-    router.push(userType === 'hr' ? '/hr/dashboard' : '/dashboard');
+    if (userType === 'hr') {
+      router.push('/hr/dashboard');
+      return;
+    }
+
+    // TODO: In production, check whether this applicant already has a submitted application.
+    // If no application exists, route to /applicant (form first).
+    // If an application already exists, route directly to the dashboard and skip the form.
+    // This demo flow always routes to the form because persistent application state does not exist yet.
+    router.push('/applicant');
   };
 
   const handleLogin = async (e: React.FormEvent) => {
