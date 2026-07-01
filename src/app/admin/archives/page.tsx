@@ -2,6 +2,7 @@
 
 import React from 'react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import PageHeader from '@/components/admin/PageHeader'
 import { components } from '@/lib/admin-theme'
 
 // ─── Mock Data ──────────────────────────────────────────────
@@ -28,22 +29,18 @@ const STATUS_BADGE: Record<string, string> = {
 export default function ArchivesPage() {
   return (
     <AdminLayout>
-      <h1 className={components.pageTitle}>Archives</h1>
-      <hr className={components.pageDivider} />
+      <PageHeader title="Archives" />
 
       {/* ── Two-column layout, each panel scrolls independently ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 items-start">
 
         {/* ── Left: Archived Job Postings ── */}
-        {/* Dark panel wrapper so each column reads as a distinct block. */}
-        <section className="bg-[#003d52] rounded-lg p-4">
-          <p className="text-xs font-semibold tracking-widest text-[#c0eaf3] uppercase mb-3">
-            Archived Job Postings
-          </p>
+        <section>
+          <p className={components.sectionLabel}>Archived Job Postings</p>
 
-          <div className="rounded-lg overflow-hidden">
+          <div className="border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg overflow-hidden">
             <table className={components.table}>
-              <thead className="bg-[#001f2a] text-xs font-semibold tracking-wider text-[#8fc3d4] uppercase">
+              <thead className={components.tableHeader}>
                 <tr>
                   <th className={components.tableHeaderCell}>Job Title</th>
                   <th className={components.tableHeaderCell}>Date Posted</th>
@@ -63,7 +60,7 @@ export default function ArchivesPage() {
                       <td className={components.tableCellMuted}>{job.datePosted}</td>
                       <td className={components.tableCellMuted}>{job.dateArchived}</td>
                       <td className={components.tableCell}>
-                        <button className={components.btnOutline}>Restore</button>
+                        <button className={components.btnOutlineSm}>Restore</button>
                       </td>
                     </tr>
                   ))}
@@ -81,14 +78,12 @@ export default function ArchivesPage() {
         </section>
 
         {/* ── Right: Archived Applicant Records ── */}
-        <section className="bg-[#003d52] rounded-lg p-4">
-          <p className="text-xs font-semibold tracking-widest text-[#c0eaf3] uppercase mb-3">
-            Archived Applicant Records
-          </p>
+        <section>
+          <p className={components.sectionLabel}>Archived Applicant Records</p>
 
-          <div className="rounded-lg overflow-hidden">
+          <div className="border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg overflow-hidden">
             <table className={components.table}>
-              <thead className="bg-[#001f2a] text-xs font-semibold tracking-wider text-[#8fc3d4] uppercase">
+              <thead className={components.tableHeader}>
                 <tr>
                   <th className={components.tableHeaderCell}>Name</th>
                   <th className={components.tableHeaderCell}>Job Applied</th>

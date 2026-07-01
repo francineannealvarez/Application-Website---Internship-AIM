@@ -1,70 +1,78 @@
 'use client'
- 
+
 /**
  * JobFormPanel.tsx
  * ─────────────────────────────────────────────────────────────
  * Slide-in drawer (from the right) for adding a new job opening.
- * Replaces the old /admin/job_postings/new full page — this opens
- * inline over the Job Postings list instead, triggered by the
- * "+ Add New Job Opening" button.
- *
- * The header here uses the SAME solid blue as the trigger button so
- * it visually reads as one continuous shape, not a separate popup.
- *
- * TODO: wire up form submission to insert into the `job_postings`
- * table once the backend is ready. Currently UI-only.
  * ─────────────────────────────────────────────────────────────
  */
- 
+
+import { useEffect, useState } from 'react'
 import { panel } from '@/lib/admin-theme'
- 
+
 const inputStyle =
   'w-full border border-[#e2e8ed] dark:border-[#1e3448] bg-white dark:bg-[#0d1f2d] text-[#1a2a35] dark:text-[#e2edf3] text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00bbda]'
 const labelStyle =
   'block text-sm font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1.5'
- 
+const helperStyle =
+  'text-xs text-[#8fa3b0] dark:text-[#6b8fa3] mt-1.5'
+
 interface JobFormPanelProps {
   isOpen: boolean
   onClose: () => void
 }
- 
+
 export default function JobFormPanel({ isOpen, onClose }: JobFormPanelProps) {
-  // Don't render anything at all when closed — keeps the DOM clean
-  // and avoids the panel intercepting clicks while hidden.
-  if (!isOpen) return null
- 
+  const [shouldRender, setShouldRender] = useState(isOpen)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsVisible(true)
+        })
+      })
+    } else {
+      setIsVisible(false)
+    }
+  }, [isOpen])
+
+  if (!shouldRender) return null
+
   return (
     <>
-      {/* Backdrop — clicking it closes the panel */}
-      <div className={panel.backdrop} onClick={onClose} />
- 
-      {/* Sliding drawer */}
-      <div className={panel.drawer}>
- 
-        {/* Header — same blue as the "+ Add New Job Opening" button,
-            so it reads as a continuation of that button rather than
-            a disconnected modal. */}
+      <div
+        className={panel.backdrop(isVisible)}
+        onClick={onClose}
+      />
+
+      <div
+        className={panel.drawer(isVisible)}
+        onTransitionEnd={() => {
+          if (!isOpen) setShouldRender(false)
+        }}
+      >
         <div className={panel.header}>
           <h2 className={panel.headerTitle}>+ Add New Job Opening</h2>
           <button onClick={onClose} className={panel.closeBtn} aria-label="Close">
             ✕
           </button>
         </div>
- 
-        {/* Form body */}
+
         <div className={panel.body}>
           <form className="space-y-5" id="new-job-form">
- 
             <div>
               <label className={labelStyle}>Job Title</label>
               <input type="text" placeholder="e.g. HR Associate" className={inputStyle} />
             </div>
- 
+
             <div>
               <label className={labelStyle}>Department</label>
               <input type="text" placeholder="e.g. Human Resources" className={inputStyle} />
             </div>
- 
+
             <div>
               <label className={labelStyle}>Job Description</label>
               <textarea
@@ -73,7 +81,7 @@ export default function JobFormPanel({ isOpen, onClose }: JobFormPanelProps) {
                 className={inputStyle}
               />
             </div>
- 
+
             <div>
               <label className={labelStyle}>Employment Type</label>
               <select className={inputStyle}>
@@ -83,20 +91,28 @@ export default function JobFormPanel({ isOpen, onClose }: JobFormPanelProps) {
                 <option>Internship</option>
               </select>
             </div>
- 
+
+            {/* ⬅️ ADDED — Application Deadline (optional). Leaving this blank
+                means the job has no deadline and stays "Open" indefinitely,
+                since status is computed from this field, not stored separately. */}
+            <div>
+              <label className={labelStyle}>Application Deadline</label>
+              <input type="date" className={inputStyle} />
+              <p className={helperStyle}>
+                Leave blank if this posting has no deadline (it will stay Open indefinitely).
+              </p>
+            </div>
           </form>
         </div>
- 
-        {/* Footer actions — sticky at the bottom of the panel */}
+
         <div className={panel.footer}>
-          {/* TODO: disabled until backend submission is wired up */}
           <button
             type="submit"
             form="new-job-form"
             className="bg-[#00bbda] hover:bg-[#00a3bf] text-white text-sm font-medium px-5 py-2 rounded transition-colors"
             onClick={(e) => {
-              // Prevent actual form submission for now since there's no backend yet
               e.preventDefault()
+              // TODO: read form values (including deadline) and insert into Supabase
             }}
           >
             Post Job Opening
@@ -109,7 +125,7 @@ export default function JobFormPanel({ isOpen, onClose }: JobFormPanelProps) {
             Cancel
           </button>
         </div>
- 
+
       </div>
     </>
   )
