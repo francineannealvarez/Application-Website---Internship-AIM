@@ -57,14 +57,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   if (!job) {
     notFound()
   }
-<<<<<<< HEAD
- 
-  const applicants = PLACEHOLDER_APPLICANTS_FOR_JOB[id] ?? []
-=======
 
   const status = getJobStatus(job.deadline)
-  const applicants = PLACEHOLDER_APPLICANTS_FOR_JOB[params.id] ?? []
->>>>>>> 2fbbe61 (wip: fixing admin/hr portal)
+  const applicants = PLACEHOLDER_APPLICANTS_FOR_JOB[(await params).id] ?? []
  
   return (
     <AdminLayout>
