@@ -5,26 +5,30 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import { components, HIRING_STAGES, type HiringStage } from '@/lib/admin-theme'
+import { pdf } from '@react-pdf/renderer'
+import { ApplicantPdfDocument } from './ApplicantPdfDocument'
  
 // ─── Types ──────────────────────────────────────────────────
-type ApplicantStatus = 'active' | 'rejected'
-type YesNo = 'Yes' | 'No'
+// NOTE: these are exported (not just declared) so ApplicantPdfDocument.tsx
+// can import them as types for the "Download PDF" / "Print" feature below.
+export type ApplicantStatus = 'active' | 'rejected'
+export type YesNo = 'Yes' | 'No'
  
-interface ActivityEntry {
+export interface ActivityEntry {
   id: string
   label: string
   date: string
   note?: string
 }
  
-interface FileAsset {
+export interface FileAsset {
   fileName: string
   sizeLabel: string
   url: string
 }
  
 // ── Step 1 — Personal Information ──
-interface PersonalInfo {
+export interface PersonalInfo {
   presentAddress: string
   provincialAddress?: string
   residenceNumber?: string
@@ -46,16 +50,16 @@ interface PersonalInfo {
 }
  
 // ── Step 2 — Family Background ──
-interface FamilyMemberInfo {
+export interface FamilyMemberInfo {
   name?: string
   address?: string
   occupation?: string
   age?: string
 }
-interface Sibling { id: string; name: string; address: string; occupation: string; age: string }
-interface ChildEntry { id: string; name: string; age: string }
+export interface Sibling { id: string; name: string; address: string; occupation: string; age: string }
+export interface ChildEntry { id: string; name: string; age: string }
  
-interface FamilyBackground {
+export interface FamilyBackground {
   father: FamilyMemberInfo
   mother: FamilyMemberInfo
   siblings: Sibling[]
@@ -68,16 +72,16 @@ interface FamilyBackground {
 }
  
 // ── Step 3 — Educational Background ──
-interface EducationLevelEntry {
+export interface EducationLevelEntry {
   school: string
   address?: string
   yearsAttended?: string
   degree?: string
   honors?: string
 }
-interface GovExam { id: string; name: string; date: string; rating: string }
+export interface GovExam { id: string; name: string; date: string; rating: string }
  
-interface EducationBackground {
+export interface EducationBackground {
   elementary?: EducationLevelEntry
   secondary?: EducationLevelEntry
   college?: EducationLevelEntry
@@ -87,7 +91,7 @@ interface EducationBackground {
 }
  
 // ── Step 4 — Employment Record ──
-interface EmploymentEntry {
+export interface EmploymentEntry {
   id: string
   position: string
   employer: string
@@ -98,8 +102,8 @@ interface EmploymentEntry {
 }
  
 // ── Step 5 — Other Information ──
-interface YesNoDetail { answer: YesNo; details?: string }
-interface OtherInfo {
+export interface YesNoDetail { answer: YesNo; details?: string }
+export interface OtherInfo {
   activities: { id: string; org: string; position: string; dates: string }[]
   skillsHobbies?: string
   trainings: { id: string; title: string; company: string; dates: string }[]
@@ -112,15 +116,15 @@ interface OtherInfo {
 }
  
 // ── Step 6 — References ──
-interface EmergencyContact { id: string; name: string; relationship: string; address: string; phone: string }
-interface CharacterRef { id: string; name: string; occupation: string; address: string; phone: string }
-interface ReferencesInfo {
+export interface EmergencyContact { id: string; name: string; relationship: string; address: string; phone: string }
+export interface CharacterRef { id: string; name: string; occupation: string; address: string; phone: string }
+export interface ReferencesInfo {
   emergencyContacts: EmergencyContact[]
   characterReferences: CharacterRef[]
 }
  
 // ── Step 7 — Availability & Final Review ──
-interface Availability {
+export interface Availability {
   howSoon?: string
   pendingApplications?: string
   certifiedNoObligation: boolean
@@ -129,7 +133,7 @@ interface Availability {
   submittedDate: string
 }
  
-interface ApplicantDetail {
+export interface ApplicantDetail {
   id: number
   name: string
   job: string
@@ -878,6 +882,7 @@ export default function ApplicantProfilePage() {
   const [noteDraft, setNoteDraft] = useState('')
   const [confirmingReject, setConfirmingReject] = useState(false)
   const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set(['personal']))
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<'download' | 'print' | null>(null)
  
   function toggleSection(key: SectionKey) {
     setOpenSections((prev) => {
@@ -961,6 +966,49 @@ export default function ApplicantProfilePage() {
       activity: [...applicant.activity, { id: `a-${Date.now()}`, label: 'HR Note added', date, note: noteDraft.trim() }],
     })
     setNoteDraft('')
+  }
+ 
+  // Builds the AIMI-format PDF (Personal Information Sheet layout) from the
+  // applicant's saved answers. Same document is used for both "Download" and
+  // "Print" — Print just opens the generated PDF in a new tab so the person
+  // can use the browser's built-in print dialog / PDF viewer.
+  async function generateApplicantPdfBlob() {
+    if (!applicant) return null
+    return pdf(<ApplicantPdfDocument applicant={applicant} />).toBlob()
+  }
+ 
+  async function handleDownloadPdf() {
+    if (!applicant) return
+    setIsGeneratingPdf('download')
+    try {
+      const blob = await generateApplicantPdfBlob()
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${applicant.name.replace(/\s+/g, '_')}_Application_Form.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } finally {
+      setIsGeneratingPdf(null)
+    }
+  }
+ 
+  async function handlePrintPdf() {
+    if (!applicant) return
+    setIsGeneratingPdf('print')
+    try {
+      const blob = await generateApplicantPdfBlob()
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      // Not revoking immediately — the new tab needs the URL to stay valid
+      // while it loads/prints the PDF.
+    } finally {
+      setIsGeneratingPdf(null)
+    }
   }
  
   return (
@@ -1440,6 +1488,31 @@ export default function ApplicantProfilePage() {
                 )}
               </div>
             )}
+          </div>
+ 
+          {/* Export — download or print the full application as a PDF
+              formatted like AIMI's paper Personal Information Sheet */}
+          <div className="bg-white dark:bg-[#132435] border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg p-6">
+            <h3 className="text-sm font-semibold text-[#0f1f29] dark:text-[#e2edf3] mb-1">Export</h3>
+            <p className="text-xs text-[#8fa3b0] dark:text-[#6b8fa3] mb-4">
+              Generates the applicant's full answers in AIMI's official form layout.
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf !== null}
+                className={`${components.btnPrimary} w-full disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {isGeneratingPdf === 'download' ? 'Generating PDF…' : 'Download PDF'}
+              </button>
+              <button
+                onClick={handlePrintPdf}
+                disabled={isGeneratingPdf !== null}
+                className={`${components.btnNeutral} w-full disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {isGeneratingPdf === 'print' ? 'Preparing…' : 'Print / Preview PDF'}
+              </button>
+            </div>
           </div>
  
           {/* Quick info */}
