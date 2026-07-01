@@ -1,10 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Position } from '@prisma/client';
+
+type PositionRecord = {
+  id: string;
+  title: string;
+  department: string;
+  employmentType: string;
+  description: string;
+  isActive: boolean;
+};
 
 interface PositionForm {
   title: string;
@@ -16,7 +24,7 @@ interface PositionForm {
 export default function HRPositionsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [positions, setPositions] = useState<PositionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<PositionForm>({
@@ -32,13 +40,7 @@ export default function HRPositionsPage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (session?.user?.id && (session.user as any).role === 'HR_ADMIN') {
-      fetchPositions();
-    }
-  }, [session]);
-
-  const fetchPositions = async () => {
+  const fetchPositions = useCallback(async () => {
     try {
       const res = await fetch('/api/hr/positions');
       if (res.ok) {
@@ -50,7 +52,17 @@ export default function HRPositionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (session?.user?.id && session.user.role === 'HR_ADMIN') {
+      const timer = window.setTimeout(() => {
+        void fetchPositions();
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [session, fetchPositions]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

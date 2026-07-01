@@ -1,7 +1,5 @@
-import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
+import { db as prisma } from "../src/lib/db";
 
 async function main() {
   // Clear existing data
@@ -18,7 +16,7 @@ async function main() {
       name: "HR Administrator",
       email: "hr@arvininternational.com",
       password: await bcrypt.hash("admin123", 10),
-      role: Role.HR_ADMIN,
+      role: "HR_ADMIN",
     },
   });
 
@@ -28,7 +26,7 @@ async function main() {
       name: "John Doe",
       email: "applicant@test.com",
       password: await bcrypt.hash("test123", 10),
-      role: Role.APPLICANT,
+      role: "APPLICANT",
     },
   });
 
@@ -182,3 +180,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

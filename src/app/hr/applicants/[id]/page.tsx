@@ -1,15 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Application, User } from '@prisma/client';
 
-interface ApplicationData extends Application {
-  user: User;
+interface ApplicationData {
+  id: string;
+  userId: string;
+  positionId: string;
+  status: string;
+  submittedAt: string | Date;
+  updatedAt: string | Date;
+  phoneNumber?: string | null;
+  homeAddress?: string | null;
+  dateOfBirth?: string | Date | null;
+  gender?: string | null;
+  message?: string | null;
+  resumePath: string;
+  coverLetterPath?: string | null;
+  portfolioUrl?: string | null;
+  rejectionReason?: string | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
   position: { id: string; title: string };
-  documents: any[];
+  documents: Array<{
+    id: string;
+    requirement: { name: string };
+    isVerified: boolean;
+    filePath: string;
+  }>;
 }
 
 export default function HRApplicantProfilePage() {
@@ -30,17 +53,11 @@ export default function HRApplicantProfilePage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (session?.user?.id && (session.user as any).role === 'HR_ADMIN') {
-      fetchApplication();
-    }
-  }, [session, applicantId]);
-
-  const fetchApplication = async () => {
+  const fetchApplication = useCallback(async () => {
     try {
       const res = await fetch(`/api/hr/applicants/${applicantId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as ApplicationData;
         setApplication(data);
         setNewStatus(data.status);
       }
@@ -49,7 +66,17 @@ export default function HRApplicantProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [applicantId]);
+
+  useEffect(() => {
+    if (session?.user?.id && session.user.role === 'HR_ADMIN') {
+      const timer = window.setTimeout(() => {
+        void fetchApplication();
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [session, fetchApplication]);
 
   const handleStatusUpdate = async () => {
     if (!application) return;

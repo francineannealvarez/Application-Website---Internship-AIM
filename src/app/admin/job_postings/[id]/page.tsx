@@ -54,15 +54,16 @@ function getStageBadgeClass(stage: string) {
   }
 }
  
-export default function JobDetailPage({ params }: { params: { id: string } }) {
-  const job = PLACEHOLDER_JOBS.find((j) => j.id === params.id)
+export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const job = PLACEHOLDER_JOBS.find((j) => j.id === id)
  
   // If someone navigates to a job id that doesn't exist, show Next.js's built-in 404
   if (!job) {
     notFound()
   }
  
-  const applicants = PLACEHOLDER_APPLICANTS_FOR_JOB[params.id] ?? []
+  const applicants = PLACEHOLDER_APPLICANTS_FOR_JOB[id] ?? []
  
   return (
     <AdminLayout>

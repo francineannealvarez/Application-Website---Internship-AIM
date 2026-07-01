@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "HR_ADMIN") {
+    if (!session?.user?.id || session.user.role !== "HR_ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -14,10 +14,13 @@ export async function GET(request: NextRequest) {
     const positionId = searchParams.get("positionId");
     const search = searchParams.get("search");
 
-    const where: any = {};
+    type ApplicationFindManyArgs = NonNullable<Parameters<typeof db.application.findMany>[0]>;
+    type ApplicationWhereInput = NonNullable<ApplicationFindManyArgs["where"]>;
+
+    const where: ApplicationWhereInput = {};
 
     if (status) {
-      where.status = status;
+      where.status = status as ApplicationWhereInput["status"];
     }
 
     if (positionId) {

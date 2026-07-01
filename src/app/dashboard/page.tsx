@@ -1,253 +1,358 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { mockUsers, getUserApplication, getUserNotifications, mockPositions } from '@/lib/mockData';
+import {
+  FileText, Clock, Sparkles, CheckCircle2,
+  MessageSquare, PenLine, Users, ClipboardCheck,
+  Calendar, MapPin, Link2, AlertCircle,
+  ChevronDown, Shield, CreditCard, Hash,
+  LogOut, Building2, User, Check,
+} from 'lucide-react';
 
-const statusSteps = [
-  { status: 'SUBMITTED', label: 'Submitted', icon: '✅' },
-  { status: 'UNDER_REVIEW', label: 'Under Review', icon: '🔵' },
-  { status: 'SHORTLISTED', label: 'Shortlisted', icon: '⭕' },
-  { status: 'REQUIREMENTS', label: 'Requirements', icon: '⭕' },
-  { status: 'HIRED', label: 'Final Decision', icon: '⭕' },
-];
+import { getUserApplication } from '@/lib/mockData';
+import { clearDemoUser, readDemoUser, type DemoUser } from '@/lib/demo-session';
 
-const statusMessages: Record<string, string> = {
-  SUBMITTED: '✅ Application received! We\'ll start reviewing it soon.',
-  UNDER_REVIEW: '🔍 Our HR team is currently reviewing your application. Sit tight!',
-  SHORTLISTED: '🎉 Great news! You\'ve been shortlisted. Check the Requirements tab now.',
-  REQUIREMENTS: '📂 Please upload your required documents before the deadline.',
-  HIRED: '🎊 Congratulations! Welcome to the Arvin family!',
-  REJECTED: '❌ Thank you for applying. We\'ll keep your profile on file for future openings.',
+function cn(...classes: (string | undefined | false | null)[]) {
+  return classes.filter(Boolean).join(' ');
+}
+
+type DocStatus = 'Submitted' | 'Pending';
+
+const STAGE_LABELS = ['Submitted', 'Under Review', 'Result'];
+const STAGE_ICONS = [FileText, Clock, Sparkles] as const;
+
+function getStepState(stepIdx: number, stage: number): 'completed' | 'active' | 'pending' {
+  if (stepIdx === 0) return stage >= 1 ? 'completed' : 'active';
+  if (stepIdx === 1) {
+    if (stage >= 2) return 'completed';
+    if (stage === 1) return 'active';
+    return 'pending';
+  }
+  if (stage === 3) return 'completed';
+  if (stage === 2) return 'active';
+  return 'pending';
+}
+
+const STATUS_BANNER: Record<number, { cls: string; icon: React.ReactNode; text: string }> = {
+  0: { cls: 'bg-blue-50 border-blue-200 text-blue-900', icon: <AlertCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />, text: 'Application received! We will start reviewing it soon.' },
+  1: { cls: 'bg-blue-50 border-blue-200 text-blue-900', icon: <AlertCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />, text: 'Our HR team is currently reviewing your application. This typically takes 3–5 business days.' },
+  2: { cls: 'bg-amber-50 border-amber-200 text-amber-900', icon: <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />, text: 'The hiring committee is currently deliberating. Expect a response within 5 business days.' },
+  3: { cls: 'bg-green-50 border-green-200 text-green-900', icon: <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />, text: '🎉 Congratulations! You passed the initial screening and are eligible for the next step.' },
 };
 
+function ApplicationStatusCard({ stage, onContinue, setApplicationStage }: { stage: number; onContinue: () => void; setApplicationStage: (n: number) => void; }) {
+  const bannerConfig = STATUS_BANNER[stage] ?? { cls: '', icon: null, text: '' };
+  return (
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-100 overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900">Application Status</h3>
+            <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+              <Check className="w-3 h-3" /> Submitted
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">Track your application progress</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href="/application" className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 transition-all font-medium flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-gray-500" /> View Application
+          </Link>
+          {stage < 3 && (
+            <button onClick={() => setApplicationStage(Math.min(stage + 1, 3))} className="text-xs px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:bg-gray-50 active:scale-95 transition-all font-medium">
+              Simulate Next Stage →
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="p-6">
+        <div className="flex items-center mb-8">
+          {STAGE_LABELS.map((label, idx) => {
+            const Icon = STAGE_ICONS[idx];
+            const stepState = getStepState(idx, stage);
+            return (
+              <React.Fragment key={idx}>
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  <div className={cn('w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300', stepState === 'completed' && 'bg-green-500 border-green-500 text-white', stepState === 'active' && 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 animate-pulse-ring', stepState === 'pending' && 'bg-white border-gray-200 text-gray-300')}>
+                    {stepState === 'completed' ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                  </div>
+                  <span className={cn('text-xs font-medium text-center w-20 leading-tight transition-colors duration-300', stepState === 'completed' && 'text-green-600', stepState === 'active' && 'text-blue-700', stepState === 'pending' && 'text-gray-400')}>{label}</span>
+                </div>
+                {idx < 2 && <div className={cn('flex-1 h-0.5 mx-3 mb-6 rounded-full transition-colors duration-500', (idx === 0 && stage >= 1) || (idx === 1 && stage >= 2) ? 'bg-green-500' : 'bg-gray-200')} />}
+              </React.Fragment>
+            );
+          })}
+        </div>
+        <div className={cn('flex items-start gap-3 rounded-xl border p-4 text-sm transition-all duration-300 animate-fade-in', bannerConfig.cls)}>
+          {bannerConfig.icon}<span>{bannerConfig.text}</span>
+        </div>
+        {stage === 3 && (
+          <div className="mt-4 animate-fade-slide-up">
+            <button onClick={onContinue} className="w-full py-3 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:from-[#0D47A1] hover:to-[#1565C0] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 text-sm shadow-md hover:shadow-xl hover:shadow-blue-500/20">
+              Continue to Hiring Process
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const HIRING_STEPS = [
+  { label: 'Initial Interview', sublabel: 'HR Screening', Icon: MessageSquare },
+  { label: 'Assessment', sublabel: 'Aptitude & Personality', Icon: PenLine },
+  { label: 'Department Interview', sublabel: 'With Department Head', Icon: Users },
+  { label: 'Requirements', sublabel: 'Document Submission', Icon: ClipboardCheck },
+] as const;
+
+const STEP_DETAILS = [
+  { date: 'July 15, 2025', time: '10:00 AM', venue: 'Arvin HQ — 5th Floor, BGC Taguig', platform: null, instructions: 'Please bring at least one valid government-issued ID. Arrive 15 minutes before your scheduled time. Business casual attire is strongly recommended.' },
+  { date: 'July 22, 2025', time: '9:00 AM', venue: null, platform: 'https://assess.arvin.ph/session/2025-07', instructions: 'The assessment is conducted online. Ensure a stable internet connection and a distraction-free environment. You will receive your unique access link 24 hours before the test.' },
+  { date: 'July 29, 2025', time: '2:00 PM', venue: 'Arvin HQ — Department Office, 6th Floor', platform: null, instructions: 'This is a technical interview with your prospective department head. Review your application thoroughly and be prepared to discuss your relevant experience in detail.' },
+];
+
+const DOCUMENTS = [
+  { label: 'NBI Clearance', note: 'Issued within the last 3 months', Icon: Shield },
+  { label: 'Medical Certificate', note: 'From an accredited government physician', Icon: ClipboardCheck },
+  { label: 'Valid Government ID', note: 'At least 2 valid IDs required', Icon: CreditCard },
+  { label: 'SSS / GSIS Number', note: 'Photocopy of E-1 form or ID card', Icon: Hash },
+  { label: 'TIN', note: 'Photocopy of BIR Form 1902 or TIN card', Icon: FileText },
+];
+
+function StepDetailContent({ stepIdx, isCurrent }: { stepIdx: number; isCurrent: boolean }) {
+  const detail = STEP_DETAILS[stepIdx];
+  if (!detail) return null;
+  return (
+    <div className="space-y-3 pt-3">
+      <div className="flex items-center gap-2.5 text-sm text-gray-700">
+        <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
+        <span><span className="font-semibold">{detail.date}</span><span className="text-gray-500"> at {detail.time}</span></span>
+      </div>
+      {detail.venue ? (
+        <div className="flex items-start gap-2.5 text-sm text-gray-700"><MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /><span>{detail.venue}</span></div>
+      ) : (
+        <div className="flex items-center gap-2.5 text-sm"><Link2 className="w-4 h-4 text-blue-500 shrink-0" /><a href={detail.platform!} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate">{detail.platform}</a></div>
+      )}
+      <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-xl p-3.5 text-sm text-amber-800">
+        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /><span>{detail.instructions}</span>
+      </div>
+      {isCurrent && (
+        <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-sm text-gray-600">
+          <Clock className="w-4 h-4 text-gray-400 shrink-0" /><span>Awaiting HR confirmation. HR will mark this step as complete once finished.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RequirementsContent({ docStatuses, isCurrent }: { docStatuses: DocStatus[]; isCurrent: boolean }) {
+  return (
+    <div className="pt-3 space-y-4">
+      <div>
+        <h4 className="font-semibold text-gray-900 text-sm">Document Requirements</h4>
+        <p className="text-xs text-gray-500 mt-0.5">Please prepare and submit the following before your scheduled deadline.</p>
+      </div>
+      <div className="space-y-2">
+        {DOCUMENTS.map(({ label, note, Icon }, idx) => (
+          <div key={idx} className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-blue-600" /></div>
+            <div className="flex-1 min-w-0"><div className="text-sm font-semibold text-gray-900">{label}</div><div className="text-xs text-gray-500 mt-0.5">{note}</div></div>
+            <span className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full shrink-0', docStatuses[idx] === 'Submitted' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>
+              {docStatuses[idx] === 'Submitted' ? <Check className="w-3 h-3" /> : <Clock className="w-3 h-3" />}{docStatuses[idx]}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-5 space-y-4">
+        <div className="flex items-start gap-3"><Calendar className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" /><div><div className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Submission Deadline</div><div className="text-sm font-bold text-blue-900 mt-0.5">August 5, 2025</div></div></div>
+        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" /><div><div className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Submission Venue</div><div className="text-sm font-bold text-blue-900 mt-0.5">HR Office, Ground Floor, Arvin HQ, BGC Taguig</div></div></div>
+        <div className="flex items-start gap-3"><Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" /><div><div className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Office Hours</div><div className="text-sm font-bold text-blue-900 mt-0.5">9:00 AM – 5:00 PM, Monday to Friday</div></div></div>
+      </div>
+      {isCurrent && (
+        <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-sm text-gray-600">
+          <Clock className="w-4 h-4 text-gray-400 shrink-0" /><span>HR will mark each document as submitted and complete this step once all requirements are received.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }: { completedSteps: number; docStatuses: DocStatus[]; onSimulateHrComplete: () => void; }) {
+  const [expandedStep, setExpandedStep] = useState<number | null>(completedSteps < 4 ? completedSteps : null);
+  const handleRowClick = (idx: number) => { if (idx > completedSteps) return; setExpandedStep(prev => prev === idx ? null : idx); };
+  const circleState = (idx: number): 'completed' | 'active' | 'locked' => { if (idx < completedSteps) return 'completed'; if (idx === completedSteps) return 'active'; return 'locked'; };
+  return (
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-100 overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
+      <div className="h-1.5 bg-gradient-to-r from-[#0D47A1] to-[#1E88E5]" />
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+        <div><h3 className="font-bold text-gray-900 tracking-widest text-sm">HIRING PROCESS</h3><p className="text-xs text-gray-500 mt-0.5">Click on each stage to view details</p></div>
+        <div className="flex items-center gap-2 shrink-0">
+          {completedSteps < 4 && <button onClick={onSimulateHrComplete} className="text-xs px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:bg-gray-50 active:scale-95 transition-all font-medium">Simulate HR Update →</button>}
+          <span className="text-xs font-bold px-3 py-1 bg-blue-600 text-white rounded-full shadow-sm shadow-blue-200">Active</span>
+        </div>
+      </div>
+      <div className="flex items-center px-6 pt-6 pb-4">
+        {HIRING_STEPS.map(({ Icon }, idx) => {
+          const state = circleState(idx);
+          return (
+            <React.Fragment key={idx}>
+              <div className="flex flex-col items-center gap-1.5 shrink-0">
+                <div className={cn('w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all', state === 'completed' && 'bg-green-500 border-green-500 text-white', state === 'active' && 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200', state === 'locked' && 'bg-white border-gray-200 text-gray-300')}>
+                  {state === 'completed' ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                </div>
+                <span className={cn('text-[10px] font-semibold text-center leading-tight max-w-[64px]', state === 'completed' && 'text-green-600', state === 'active' && 'text-blue-600', state === 'locked' && 'text-gray-300')}>{HIRING_STEPS[idx].label}</span>
+              </div>
+              {idx < 3 && <div className={cn('flex-1 h-0.5 mx-2 mb-5 rounded-full transition-colors duration-500', idx < completedSteps ? 'bg-green-500' : 'bg-gray-200')} />}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <div className="px-4 pb-5 space-y-2">
+        {HIRING_STEPS.map((step, idx) => {
+          const isCompleted = idx < completedSteps;
+          const isCurrent = idx === completedSteps && completedSteps < 4;
+          const isLocked = idx > completedSteps;
+          const isExpanded = expandedStep === idx;
+          return (
+            <div key={idx} className={cn('rounded-xl border transition-all duration-200', isCompleted && 'border-green-100 bg-green-50/30', isCurrent && 'border-blue-200 bg-blue-50/20 shadow-sm', isLocked && 'border-gray-100 bg-gray-50/50')}>
+              <button onClick={() => handleRowClick(idx)} disabled={isLocked} className={cn('w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors rounded-xl', isLocked ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/[0.02]')}>
+                <div className={cn('w-2.5 h-2.5 rounded-full shrink-0', isCompleted && 'bg-green-500', isCurrent && 'bg-blue-500', isLocked && 'bg-gray-300')} />
+                <div className="flex-1 min-w-0">
+                  <div className={cn('font-semibold text-sm', isLocked ? 'text-gray-300' : 'text-gray-900')}>{step.label}</div>
+                  <div className={cn('text-xs mt-0.5', isLocked ? 'text-gray-300' : 'text-gray-500')}>{step.sublabel}</div>
+                </div>
+                <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full shrink-0', isCompleted && 'bg-green-100 text-green-700', isCurrent && 'bg-blue-600 text-white', isLocked && 'bg-gray-100 text-gray-300')}>{isCompleted ? 'Done' : isCurrent ? 'Current' : 'Pending'}</span>
+                {!isLocked && <ChevronDown className={cn('w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200', isExpanded && 'rotate-180')} />}
+              </button>
+              {isExpanded && !isLocked && (
+                <div className="px-4 pb-4 border-t border-gray-100/80 animate-fade-slide-up">
+                  {idx === 3 ? <RequirementsContent docStatuses={docStatuses} isCurrent={isCurrent} /> : <StepDetailContent stepIdx={idx} isCurrent={isCurrent} />}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProceedModal({ open, onCancel, onConfirm }: { open: boolean; onCancel: () => void; onConfirm: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 animate-scale-in">
+        <h2 className="text-lg font-bold text-gray-900 mb-2 text-center">Proceed with your application?</h2>
+        <p className="text-sm text-gray-600 mb-6 leading-relaxed text-justify">Do you want to proceed with your application to the next stage? You will move on to the <strong className="text-gray-900">Initial Interview</strong>, <strong className="text-gray-900">Assessment</strong>, <strong className="text-gray-900">Department Interview</strong>, and <strong className="text-gray-900">Requirements</strong> submission.</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm">Cancel</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:from-[#0D47A1] hover:to-[#1565C0] transition-all text-sm shadow-md">Yes, Continue</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CongratsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-7 text-center animate-scale-in">
+        <div className="relative w-16 h-16 mx-auto mb-4">
+          <div className="absolute inset-0 bg-green-100 rounded-full animate-pulse-ring" />
+          <div className="relative w-16 h-16 bg-green-100 rounded-full flex items-center justify-center"><Sparkles className="w-8 h-8 text-green-600" /></div>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Congratulations! 🎉</h2>
+        <p className="text-sm text-gray-600 mb-5 leading-relaxed">You have successfully completed every step of the hiring process. Welcome to the Arvin family!</p>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 text-left space-y-2">
+          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-blue-900"><Building2 className="w-4 h-4 text-blue-600" />About Arvin International Marketing Inc.</div>
+          <p className="text-xs text-blue-800 leading-relaxed text-justify">Arvin International Marketing Inc. is a Philippine-based company committed to delivering quality products and services while fostering growth, integrity, and excellence among its people. Our HR team will be in touch shortly with details on your onboarding, start date, and the documents you need to complete employment.</p>
+        </div>
+        <button onClick={onClose} className="w-full py-2.5 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:from-[#0D47A1] hover:to-[#1565C0] transition-all text-sm shadow-md">OK</button>
+      </div>
+    </div>
+  );
+}
+
 export default function ApplicantDashboard() {
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [application, setApplication] = useState<any>(null);
-  const [position, setPosition] = useState<any>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [demoUser] = useState<DemoUser | null>(() => (typeof window !== 'undefined' ? readDemoUser() : null));
+  const application = (session?.user?.id ?? demoUser?.id) ? getUserApplication((session?.user?.id ?? demoUser?.id) as string) : undefined;
+  const [applicationStage, setApplicationStage] = useState(0);
+  const [showHiringProcess, setShowHiringProcess] = useState(false);
+  const [hiringCompletedSteps, setHiringCompletedSteps] = useState(0);
+  const [docStatuses, setDocStatuses] = useState<DocStatus[]>(['Pending', 'Pending', 'Pending', 'Pending', 'Pending']);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [congratsOpen, setCongratsOpen] = useState(false);
 
   useEffect(() => {
-    // Check for mock user or redirect
-    const mockUserStr = sessionStorage.getItem('mockUser');
-    if (!mockUserStr) {
+    if (status === 'unauthenticated' && !demoUser) {
       router.push('/login');
-      return;
     }
+  }, [status, demoUser, router]);
 
-    const mockUser = JSON.parse(mockUserStr);
-    
-    // Only allow applicants
-    if (mockUser.role !== 'APPLICANT') {
-      router.push('/login');
-      return;
-    }
-
-    setUser(mockUser);
-    
-    // Load mock data
-    const app = getUserApplication(mockUser.id);
-    if (app) {
-      setApplication(app);
-      const pos = mockPositions.find(p => p.id === app.positionId);
-      setPosition(pos);
-    }
-    
-    const notifs = getUserNotifications(mockUser.id).slice(0, 3);
-    setNotifications(notifs);
-    
-    setLoading(false);
-  }, [router]);
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-
-  if (!user) return null;
-
-  const currentStepIndex = application
-    ? statusSteps.findIndex((step) => step.status === application.status)
-    : -1;
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('mockUser');
-    router.push('/login');
+  const handleSimulateHrComplete = () => {
+    setHiringCompletedSteps(prev => {
+      const next = Math.min(prev + 1, 4);
+      if (next === 4) {
+        setDocStatuses(['Submitted', 'Submitted', 'Submitted', 'Submitted', 'Submitted']);
+        setCongratsOpen(true);
+      }
+      return next;
+    });
   };
 
+  if (status === 'loading') return <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>;
+  if (!session && !demoUser) return null;
+
+  const name = session?.user?.name || demoUser?.name || 'Applicant';
+  const firstName = name.split(' ')[0];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8f1fc_0%,_#f0f5fb_55%)]">
+      <nav className="bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm sticky top-0 z-40">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-2xl font-bold text-[#00AEEF]">ARVIN</div>
+            <span className="text-2xl font-bold tracking-[0.2em] bg-gradient-to-r from-[#0D47A1] to-[#1E88E5] bg-clip-text text-transparent">ARVIN</span>
+            <span className="hidden sm:block text-[11px] text-gray-400 border-l border-gray-200 pl-2.5 ml-0.5 leading-tight">International<br />Marketing Inc.</span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700">{user.name}</span>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-            >
-              Logout
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center ring-2 ring-blue-50"><User className="w-4 h-4 text-blue-700" /></div>
+              <span className="hidden sm:block text-sm font-medium text-gray-700">{name}</span>
+            </div>
+            <button onClick={() => { clearDemoUser(); void signOut({ callbackUrl: '/login' }); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 active:scale-95 transition-all">
+              <LogOut className="w-3.5 h-3.5" /> Logout
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-[#00AEEF] to-[#1B3A5C] text-white rounded-lg p-8 mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome back, {user.name}! 👋</h1>
-          <p className="text-white/90">Here's the current status of your application at Arvin International.</p>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+        <div className="relative bg-gradient-to-br from-[#0D47A1] via-[#1565C0] to-[#1E88E5] rounded-2xl px-7 py-8 text-white shadow-lg shadow-blue-900/10 overflow-hidden animate-fade-slide-up">
+          <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 1.5px 1.5px, white 1.5px, transparent 0)', backgroundSize: '22px 22px' }} />
+          <h1 className="relative text-2xl sm:text-3xl font-bold mb-1.5">Welcome back, {firstName}! 👋</h1>
+          <p className="relative text-blue-100 text-sm sm:text-base">{"Here's the current status of your application at Arvin International."}</p>
         </div>
 
         {!application ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-gray-600 mb-4">You haven't submitted an application yet.</p>
-            <Link
-              href="/apply"
-              className="inline-block px-6 py-2 bg-[#00AEEF] text-white rounded-lg hover:bg-[#0099CC]"
-            >
-              Start Your Application
-            </Link>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center animate-fade-slide-up delay-1">
+            <p className="text-gray-600 mb-4">{"You haven't submitted an application yet."}</p>
+            <Link href="/apply" className="inline-block px-6 py-2.5 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 text-sm">Start Your Application</Link>
           </div>
+        ) : showHiringProcess ? (
+          <HiringProcessCard key={hiringCompletedSteps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} onSimulateHrComplete={handleSimulateHrComplete} />
         ) : (
-          <>
-            {/* Status Stepper */}
-            <div className="bg-white rounded-lg shadow p-8 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Application Status</h2>
-              
-              <div className="flex items-center justify-between mb-8 relative">
-                {statusSteps.map((step, index) => (
-                  <div key={step.status} className="flex flex-col items-center flex-1 relative z-10">
-                    <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mb-2 ${
-                        index <= currentStepIndex
-                          ? 'bg-[#00AEEF] text-white'
-                          : 'bg-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {index < currentStepIndex ? '✓' : step.icon}
-                    </div>
-                    <span
-                      className={`text-sm font-medium text-center ${
-                        index <= currentStepIndex
-                          ? 'text-[#00AEEF]'
-                          : 'text-gray-600'
-                      }`}
-                    >
-                      {step.label}
-                    </span>
-                  </div>
-                ))}
-                {/* Progress line */}
-                <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 z-0">
-                  <div
-                    className="h-full bg-[#00AEEF] transition-all"
-                    style={{ width: `${currentStepIndex >= 0 ? ((currentStepIndex) / (statusSteps.length - 1)) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-800">{statusMessages[application.status]}</p>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* Application Summary */}
-              <div className="md:col-span-2 bg-white rounded-lg shadow p-8">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Application Summary</h3>
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-gray-600">Position Applied:</span>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {position?.title || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Department:</span>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {position?.department || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Employment Type:</span>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {position?.employmentType || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Date Submitted:</span>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {new Date(application.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Last Status Update:</span>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {new Date(application.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  {application.rejectionReason && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <p className="text-red-800 font-semibold mb-2">Rejection Reason:</p>
-                      <p className="text-red-700">{application.rejectionReason}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Recent Notifications */}
-              <div className="bg-white rounded-lg shadow p-8">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Notifications</h3>
-                <div className="space-y-3">
-                  {notifications.length > 0 ? (
-                    notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        className={`pb-3 border-b border-gray-200 last:border-b-0 ${!notif.isRead ? 'bg-blue-50 p-2 rounded' : ''}`}
-                      >
-                        <p className="text-sm text-gray-700">{notif.message}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {new Date(notif.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-600 text-sm">No notifications yet</p>
-                  )}
-                  <Link
-                    href="/notifications"
-                    className="text-[#00AEEF] font-semibold text-sm hover:underline mt-4 block"
-                  >
-                    View all notifications →
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Links */}
-            <div className="mt-8 grid md:grid-cols-2 gap-4">
-              <Link
-                href="/application"
-                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-center"
-              >
-                <p className="text-lg font-semibold text-[#00AEEF]">📋 View Application</p>
-              </Link>
-              <Link
-                href="/requirements"
-                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-center"
-              >
-                <p className="text-lg font-semibold text-[#00AEEF]">📁 Requirements</p>
-              </Link>
-            </div>
-          </>
+          <ApplicationStatusCard stage={applicationStage} onContinue={() => setModalOpen(true)} setApplicationStage={setApplicationStage} />
         )}
       </div>
+
+      <ProceedModal open={modalOpen} onCancel={() => setModalOpen(false)} onConfirm={() => { setModalOpen(false); setShowHiringProcess(true); }} />
+      <CongratsModal open={congratsOpen} onClose={() => setCongratsOpen(false)} />
     </div>
   );
 }

@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Requirement } from '@prisma/client';
+
+type RequirementRecord = {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+};
 
 interface RequirementForm {
   name: string;
@@ -14,7 +20,7 @@ interface RequirementForm {
 export default function HRRequirementsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [requirements, setRequirements] = useState<RequirementRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<RequirementForm>({
@@ -28,13 +34,7 @@ export default function HRRequirementsPage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (session?.user?.id && (session.user as any).role === 'HR_ADMIN') {
-      fetchRequirements();
-    }
-  }, [session]);
-
-  const fetchRequirements = async () => {
+  const fetchRequirements = useCallback(async () => {
     try {
       const res = await fetch('/api/hr/requirements');
       if (res.ok) {
@@ -46,7 +46,17 @@ export default function HRRequirementsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (session?.user?.id && session.user.role === 'HR_ADMIN') {
+      const timer = window.setTimeout(() => {
+        void fetchRequirements();
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [session, fetchRequirements]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

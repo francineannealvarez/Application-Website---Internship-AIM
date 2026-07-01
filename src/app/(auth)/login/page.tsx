@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { mockUsers } from '@/lib/mockData';
+import { clearDemoUser, writeDemoUser } from '@/lib/demo-session';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,9 +14,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleMockLogin = (userType: 'hr' | 'applicant') => {
+  const handleDemoLogin = (userType: 'hr' | 'applicant') => {
     const user = userType === 'hr' ? mockUsers.hrAdmin : mockUsers.applicant1;
-    sessionStorage.setItem('mockUser', JSON.stringify(user));
+    writeDemoUser(user);
     router.push(userType === 'hr' ? '/hr/dashboard' : '/dashboard');
   };
 
@@ -25,6 +26,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      clearDemoUser();
       const result = await signIn('credentials', {
         email,
         password,
@@ -109,7 +111,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-gray-600 text-sm mt-6">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-[#00AEEF] font-semibold hover:underline">
               Register here
             </Link>
@@ -121,14 +123,14 @@ export default function LoginPage() {
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => handleMockLogin('applicant')}
+                onClick={() => handleDemoLogin('applicant')}
                 className="w-full px-3 py-2 bg-[#00AEEF] text-white text-xs font-medium rounded hover:bg-[#0099CC] transition"
               >
                 👤 Login as Applicant (Demo)
               </button>
               <button
                 type="button"
-                onClick={() => handleMockLogin('hr')}
+                onClick={() => handleDemoLogin('hr')}
                 className="w-full px-3 py-2 bg-[#1B3A5C] text-white text-xs font-medium rounded hover:bg-[#0f2847] transition"
               >
                 👨‍💼 Login as HR Admin (Demo)

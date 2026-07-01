@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
     const application = await db.application.findUnique({
       where: { userId: session.user.id },
       include: {
+        user: true,
         position: true,
         documents: {
           include: {

@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+
+type Role = 'APPLICANT' | 'HR_ADMIN';
  
 // NOTE: now using the shared `db` client from src/lib/db.ts instead of
 // creating a separate `new PrismaClient()` here. Prisma 7 requires a
@@ -48,14 +50,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
+        session.user.id = String(token.id ?? '');
+        session.user.role = (token.role as Role | undefined) ?? 'APPLICANT';
       }
       return session;
     },

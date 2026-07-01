@@ -1,15 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Notification } from '@prisma/client';
+
+type NotificationItem = {
+  id: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string | Date;
+};
 
 export default function NotificationsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,13 +24,7 @@ export default function NotificationsPage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (session?.user?.id) {
-      fetchNotifications();
-    }
-  }, [session]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch('/api/notifications');
       if (res.ok) {
@@ -36,7 +36,17 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      const timer = window.setTimeout(() => {
+        void fetchNotifications();
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [session, fetchNotifications]);
 
   const handleMarkAllAsRead = async () => {
     try {
@@ -76,7 +86,7 @@ export default function NotificationsPage() {
           {notifications.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-600 text-lg">No notifications yet</p>
-              <p className="text-gray-500 text-sm">You'll receive notifications here when your application status changes.</p>
+              <p className="text-gray-500 text-sm">You&apos;ll receive notifications here when your application status changes.</p>
             </div>
           ) : (
             <div className="space-y-3">
