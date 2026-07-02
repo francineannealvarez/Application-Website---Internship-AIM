@@ -37,61 +37,76 @@ function getStepState(stepIdx: number, stage: number): 'completed' | 'active' | 
 }
 
 const STATUS_BANNER: Record<number, { cls: string; icon: React.ReactNode; text: string }> = {
-  0: { cls: 'bg-blue-50 border-blue-200 text-blue-900', icon: <AlertCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />, text: 'Application received! We will start reviewing it soon.' },
-  1: { cls: 'bg-blue-50 border-blue-200 text-blue-900', icon: <AlertCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />, text: 'Our HR team is currently reviewing your application. This typically takes 3–5 business days.' },
-  2: { cls: 'bg-amber-50 border-amber-200 text-amber-900', icon: <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />, text: 'The hiring committee is currently deliberating. Expect a response within 5 business days.' },
-  3: { cls: 'bg-green-50 border-green-200 text-green-900', icon: <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />, text: '🎉 Congratulations! You passed the initial screening and are eligible for the next step.' },
+  0: { cls: 'text-[#0B2A4A]', icon: <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />, text: 'Application received! We will start reviewing it soon.' },
+  1: { cls: 'text-[#0B2A4A]', icon: <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />, text: 'Our HR team is currently reviewing your application. This typically takes 3–5 business days.' },
+  2: { cls: 'text-amber-900', icon: <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />, text: 'The hiring committee is currently deliberating. Expect a response within 5 business days.' },
+  3: { cls: 'text-green-900', icon: <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />, text: '🎉 Congratulations! You passed the initial screening and are eligible for the next step.' },
+};
+
+const STATUS_BANNER_STYLE: Record<number, React.CSSProperties> = {
+  0: { backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' },
+  1: { backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' },
+  2: {},
+  3: {},
 };
 
 function ApplicationStatusCard({ stage, onContinue, setApplicationStage }: { stage: number; onContinue: () => void; setApplicationStage: (n: number) => void; }) {
   const bannerConfig = STATUS_BANNER[stage] ?? { cls: '', icon: null, text: '' };
+  const bannerStyle = STATUS_BANNER_STYLE[stage] ?? {};
+  const bannerExtraCls = stage === 2 ? 'bg-amber-50 border border-amber-200' : stage === 3 ? 'bg-green-50 border border-green-200' : '';
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-100 overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-[#E5E9EC] overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
+      <div className="px-6 py-4 border-b border-[#E5E9EC] flex items-center justify-between gap-2 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900">Application Status</h3>
+            <h3 className="font-bold text-[#0B2A4A]">Application Status</h3>
             <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
               <Check className="w-3 h-3" /> Submitted
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">Track your application progress</p>
+          <p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Track your application progress</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Link href="/application" className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 transition-all font-medium flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5 text-gray-500" /> View Application
+          <Link href="/application" className="text-xs px-3 py-1.5 rounded-lg border text-[#0B2A4A] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium flex items-center gap-1.5" style={{ borderColor: '#E5E9EC' }}>
+            <FileText className="w-3.5 h-3.5" style={{ color: '#6B7A8D' }} /> View Application
           </Link>
           {stage < 3 && (
-            <button onClick={() => setApplicationStage(Math.min(stage + 1, 3))} className="text-xs px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:bg-gray-50 active:scale-95 transition-all font-medium">
-              Simulate Next Stage →
+            <button onClick={() => setApplicationStage(Math.min(stage + 1, 3))} className="text-xs px-3 py-1.5 rounded-lg border border-dashed text-[#9BAAB8] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium" style={{ borderColor: '#D1DAE3' }}>
+              Simulate Next Stage &rarr;
             </button>
           )}
         </div>
       </div>
-      <div className="p-6">
-        <div className="flex items-center mb-8">
+      <div className="p-6 sm:p-8">
+        <div className="flex items-center mb-8 max-w-xl mx-auto">
           {STAGE_LABELS.map((label, idx) => {
             const Icon = STAGE_ICONS[idx];
             const stepState = getStepState(idx, stage);
             return (
               <React.Fragment key={idx}>
                 <div className="flex flex-col items-center gap-2 shrink-0">
-                  <div className={cn('w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300', stepState === 'completed' && 'bg-green-500 border-green-500 text-white', stepState === 'active' && 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 animate-pulse-ring', stepState === 'pending' && 'bg-white border-gray-200 text-gray-300')}>
+                  <div className={cn('w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300', stepState === 'pending' && 'bg-white text-[#D1DAE3]')}
+                    style={
+                      stepState === 'completed' ? { backgroundColor: '#12B6D6', borderColor: '#12B6D6', color: '#fff' }
+                      : stepState === 'active' ? { backgroundColor: '#0B2A4A', borderColor: '#0B2A4A', color: '#fff', boxShadow: '0 0 0 5px rgba(11,42,74,0.12)' }
+                      : { borderColor: '#E5E9EC' }
+                    }>
                     {stepState === 'completed' ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   </div>
-                  <span className={cn('text-xs font-medium text-center w-20 leading-tight transition-colors duration-300', stepState === 'completed' && 'text-green-600', stepState === 'active' && 'text-blue-700', stepState === 'pending' && 'text-gray-400')}>{label}</span>
+                  <span className={cn('text-xs font-medium text-center w-20 leading-tight transition-colors duration-300')}
+                    style={{ color: stepState === 'completed' ? '#12B6D6' : stepState === 'active' ? '#0B2A4A' : '#9BAAB8' }}>{label}</span>
                 </div>
-                {idx < 2 && <div className={cn('flex-1 h-0.5 mx-3 mb-6 rounded-full transition-colors duration-500', (idx === 0 && stage >= 1) || (idx === 1 && stage >= 2) ? 'bg-green-500' : 'bg-gray-200')} />}
+                {idx < 2 && <div className="flex-1 h-0.5 mx-3 mb-6 rounded-full transition-colors duration-500" style={{ backgroundColor: (idx === 0 && stage >= 1) || (idx === 1 && stage >= 2) ? '#12B6D6' : '#E5E9EC' }} />}
               </React.Fragment>
             );
           })}
         </div>
-        <div className={cn('flex items-start gap-3 rounded-xl border p-4 text-sm transition-all duration-300 animate-fade-in', bannerConfig.cls)}>
+        <div className={cn('flex items-start gap-3 rounded-xl p-4 text-sm transition-all duration-300 animate-fade-in', bannerConfig.cls, bannerExtraCls)} style={bannerStyle}>
           {bannerConfig.icon}<span>{bannerConfig.text}</span>
         </div>
         {stage === 3 && (
           <div className="mt-4 animate-fade-slide-up">
-            <button onClick={onContinue} className="w-full py-3 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:from-[#0D47A1] hover:to-[#1565C0] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 text-sm shadow-md hover:shadow-xl hover:shadow-blue-500/20">
+            <button onClick={onContinue} className="w-full py-3 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>
               Continue to Hiring Process
             </button>
           </div>
@@ -127,21 +142,21 @@ function StepDetailContent({ stepIdx, isCurrent }: { stepIdx: number; isCurrent:
   if (!detail) return null;
   return (
     <div className="space-y-3 pt-3">
-      <div className="flex items-center gap-2.5 text-sm text-gray-700">
-        <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
-        <span><span className="font-semibold">{detail.date}</span><span className="text-gray-500"> at {detail.time}</span></span>
+      <div className="flex items-center gap-2.5 text-sm text-[#0B2A4A]">
+        <Calendar className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+        <span><span className="font-semibold">{detail.date}</span><span style={{ color: '#6B7A8D' }}> at {detail.time}</span></span>
       </div>
       {detail.venue ? (
-        <div className="flex items-start gap-2.5 text-sm text-gray-700"><MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /><span>{detail.venue}</span></div>
+        <div className="flex items-start gap-2.5 text-sm text-[#0B2A4A]"><MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><span>{detail.venue}</span></div>
       ) : (
-        <div className="flex items-center gap-2.5 text-sm"><Link2 className="w-4 h-4 text-blue-500 shrink-0" /><a href={detail.platform!} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate">{detail.platform}</a></div>
+        <div className="flex items-center gap-2.5 text-sm"><Link2 className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} /><a href={detail.platform!} target="_blank" rel="noreferrer" className="hover:underline truncate" style={{ color: '#12B6D6' }}>{detail.platform}</a></div>
       )}
       <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-xl p-3.5 text-sm text-amber-800">
         <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /><span>{detail.instructions}</span>
       </div>
       {isCurrent && (
-        <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-sm text-gray-600">
-          <Clock className="w-4 h-4 text-gray-400 shrink-0" /><span>Awaiting HR confirmation. HR will mark this step as complete once finished.</span>
+        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: '#F7F9FA', border: '1px solid #E5E9EC', color: '#6B7A8D' }}>
+          <Clock className="w-4 h-4 shrink-0" style={{ color: '#9BAAB8' }} /><span>Awaiting HR confirmation. HR will mark this step as complete once finished.</span>
         </div>
       )}
     </div>
@@ -152,28 +167,28 @@ function RequirementsContent({ docStatuses, isCurrent }: { docStatuses: DocStatu
   return (
     <div className="pt-3 space-y-4">
       <div>
-        <h4 className="font-semibold text-gray-900 text-sm">Document Requirements</h4>
-        <p className="text-xs text-gray-500 mt-0.5">Please prepare and submit the following before your scheduled deadline.</p>
+        <h4 className="font-semibold text-[#0B2A4A] text-sm">Document Requirements</h4>
+        <p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Please prepare and submit the following before your scheduled deadline.</p>
       </div>
       <div className="space-y-2">
         {DOCUMENTS.map(({ label, note, Icon }, idx) => (
-          <div key={idx} className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-blue-600" /></div>
-            <div className="flex-1 min-w-0"><div className="text-sm font-semibold text-gray-900">{label}</div><div className="text-xs text-gray-500 mt-0.5">{note}</div></div>
+          <div key={idx} className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#E5E9EC] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#EEF9FB' }}><Icon className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
+            <div className="flex-1 min-w-0"><div className="text-sm font-semibold text-[#0B2A4A]">{label}</div><div className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>{note}</div></div>
             <span className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full shrink-0', docStatuses[idx] === 'Submitted' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>
               {docStatuses[idx] === 'Submitted' ? <Check className="w-3 h-3" /> : <Clock className="w-3 h-3" />}{docStatuses[idx]}
             </span>
           </div>
         ))}
       </div>
-      <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-5 space-y-4">
-        <div className="flex items-start gap-3"><Calendar className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" /><div><div className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Submission Deadline</div><div className="text-sm font-bold text-blue-900 mt-0.5">August 5, 2025</div></div></div>
-        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" /><div><div className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Submission Venue</div><div className="text-sm font-bold text-blue-900 mt-0.5">HR Office, Ground Floor, Arvin HQ, BGC Taguig</div></div></div>
-        <div className="flex items-start gap-3"><Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" /><div><div className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Office Hours</div><div className="text-sm font-bold text-blue-900 mt-0.5">9:00 AM – 5:00 PM, Monday to Friday</div></div></div>
+      <div className="rounded-xl px-5 py-5 space-y-4" style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}>
+        <div className="flex items-start gap-3"><Calendar className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Deadline</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">August 5, 2025</div></div></div>
+        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">HR Office, Ground Floor, Arvin HQ, BGC Taguig</div></div></div>
+        <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">9:00 AM – 5:00 PM, Monday to Friday</div></div></div>
       </div>
       {isCurrent && (
-        <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-sm text-gray-600">
-          <Clock className="w-4 h-4 text-gray-400 shrink-0" /><span>HR will mark each document as submitted and complete this step once all requirements are received.</span>
+        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: '#F7F9FA', border: '1px solid #E5E9EC', color: '#6B7A8D' }}>
+          <Clock className="w-4 h-4 shrink-0" style={{ color: '#9BAAB8' }} /><span>HR will mark each document as submitted and complete this step once all requirements are received.</span>
         </div>
       )}
     </div>
@@ -185,50 +200,57 @@ function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }
   const handleRowClick = (idx: number) => { if (idx > completedSteps) return; setExpandedStep(prev => prev === idx ? null : idx); };
   const circleState = (idx: number): 'completed' | 'active' | 'locked' => { if (idx < completedSteps) return 'completed'; if (idx === completedSteps) return 'active'; return 'locked'; };
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-100 overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
-      <div className="h-1.5 bg-gradient-to-r from-[#0D47A1] to-[#1E88E5]" />
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
-        <div><h3 className="font-bold text-gray-900 tracking-widest text-sm">HIRING PROCESS</h3><p className="text-xs text-gray-500 mt-0.5">Click on each stage to view details</p></div>
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-[#E5E9EC] overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
+      <div className="h-1.5" style={{ backgroundColor: '#0B2A4A' }} />
+      <div className="px-6 py-4 border-b border-[#E5E9EC] flex items-center justify-between gap-2 flex-wrap">
+        <div><h3 className="font-bold text-[#0B2A4A] tracking-widest text-sm">HIRING PROCESS</h3><p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Click on each stage to view details</p></div>
         <div className="flex items-center gap-2 shrink-0">
-          {completedSteps < 4 && <button onClick={onSimulateHrComplete} className="text-xs px-3 py-1.5 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:bg-gray-50 active:scale-95 transition-all font-medium">Simulate HR Update →</button>}
-          <span className="text-xs font-bold px-3 py-1 bg-blue-600 text-white rounded-full shadow-sm shadow-blue-200">Active</span>
+          {completedSteps < 4 && <button onClick={onSimulateHrComplete} className="text-xs px-3 py-1.5 rounded-lg border border-dashed text-[#9BAAB8] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium" style={{ borderColor: '#D1DAE3' }}>Simulate HR Update &rarr;</button>}
+          <span className="text-xs font-bold px-3 py-1 text-white rounded-full shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Active</span>
         </div>
       </div>
-      <div className="flex items-center px-6 pt-6 pb-4">
+      <div className="flex items-center px-6 sm:px-10 pt-6 pb-4 max-w-2xl mx-auto">
         {HIRING_STEPS.map(({ Icon }, idx) => {
           const state = circleState(idx);
           return (
             <React.Fragment key={idx}>
               <div className="flex flex-col items-center gap-1.5 shrink-0">
-                <div className={cn('w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all', state === 'completed' && 'bg-green-500 border-green-500 text-white', state === 'active' && 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200', state === 'locked' && 'bg-white border-gray-200 text-gray-300')}>
+                <div className={cn('w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all', state === 'locked' && 'bg-white text-[#D1DAE3]')}
+                  style={
+                    state === 'completed' ? { backgroundColor: '#12B6D6', borderColor: '#12B6D6', color: '#fff' }
+                    : state === 'active' ? { backgroundColor: '#0B2A4A', borderColor: '#0B2A4A', color: '#fff', boxShadow: '0 0 0 4px rgba(11,42,74,0.12)' }
+                    : { borderColor: '#E5E9EC' }
+                  }>
                   {state === 'completed' ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                 </div>
-                <span className={cn('text-[10px] font-semibold text-center leading-tight max-w-[64px]', state === 'completed' && 'text-green-600', state === 'active' && 'text-blue-600', state === 'locked' && 'text-gray-300')}>{HIRING_STEPS[idx].label}</span>
+                <span className="text-[10px] font-semibold text-center leading-tight max-w-[64px]" style={{ color: state === 'completed' ? '#12B6D6' : state === 'active' ? '#0B2A4A' : '#D1DAE3' }}>{HIRING_STEPS[idx].label}</span>
               </div>
-              {idx < 3 && <div className={cn('flex-1 h-0.5 mx-2 mb-5 rounded-full transition-colors duration-500', idx < completedSteps ? 'bg-green-500' : 'bg-gray-200')} />}
+              {idx < 3 && <div className="flex-1 h-0.5 mx-2 mb-5 rounded-full transition-colors duration-500" style={{ backgroundColor: idx < completedSteps ? '#12B6D6' : '#E5E9EC' }} />}
             </React.Fragment>
           );
         })}
       </div>
-      <div className="px-4 pb-5 space-y-2">
+      <div className="px-4 sm:px-6 pb-5 space-y-2">
         {HIRING_STEPS.map((step, idx) => {
           const isCompleted = idx < completedSteps;
           const isCurrent = idx === completedSteps && completedSteps < 4;
           const isLocked = idx > completedSteps;
           const isExpanded = expandedStep === idx;
           return (
-            <div key={idx} className={cn('rounded-xl border transition-all duration-200', isCompleted && 'border-green-100 bg-green-50/30', isCurrent && 'border-blue-200 bg-blue-50/20 shadow-sm', isLocked && 'border-gray-100 bg-gray-50/50')}>
+            <div key={idx} className={cn('rounded-xl border transition-all duration-200', isCompleted && 'border-green-100 bg-green-50/30', isLocked && 'bg-[#F7F9FA]')}
+              style={isCurrent ? { borderColor: '#B8EAF3', backgroundColor: '#EEF9FB' } : isLocked ? { borderColor: '#E5E9EC' } : {}}>
               <button onClick={() => handleRowClick(idx)} disabled={isLocked} className={cn('w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors rounded-xl', isLocked ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/[0.02]')}>
-                <div className={cn('w-2.5 h-2.5 rounded-full shrink-0', isCompleted && 'bg-green-500', isCurrent && 'bg-blue-500', isLocked && 'bg-gray-300')} />
+                <div className={cn('w-2.5 h-2.5 rounded-full shrink-0', isCompleted && 'bg-green-500')} style={isCurrent ? { backgroundColor: '#12B6D6' } : isLocked ? { backgroundColor: '#D1DAE3' } : {}} />
                 <div className="flex-1 min-w-0">
-                  <div className={cn('font-semibold text-sm', isLocked ? 'text-gray-300' : 'text-gray-900')}>{step.label}</div>
-                  <div className={cn('text-xs mt-0.5', isLocked ? 'text-gray-300' : 'text-gray-500')}>{step.sublabel}</div>
+                  <div className={cn('font-semibold text-sm', isLocked ? 'text-[#D1DAE3]' : 'text-[#0B2A4A]')}>{step.label}</div>
+                  <div className="text-xs mt-0.5" style={{ color: isLocked ? '#D1DAE3' : '#6B7A8D' }}>{step.sublabel}</div>
                 </div>
-                <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full shrink-0', isCompleted && 'bg-green-100 text-green-700', isCurrent && 'bg-blue-600 text-white', isLocked && 'bg-gray-100 text-gray-300')}>{isCompleted ? 'Done' : isCurrent ? 'Current' : 'Pending'}</span>
-                {!isLocked && <ChevronDown className={cn('w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200', isExpanded && 'rotate-180')} />}
+                <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full shrink-0', isCompleted && 'bg-green-100 text-green-700', isLocked && 'bg-gray-100 text-gray-300')}
+                  style={isCurrent ? { backgroundColor: '#0B2A4A', color: '#fff' } : {}}>{isCompleted ? 'Done' : isCurrent ? 'Current' : 'Pending'}</span>
+                {!isLocked && <ChevronDown className={cn('w-4 h-4 shrink-0 transition-transform duration-200', isExpanded && 'rotate-180')} style={{ color: '#9BAAB8' }} />}
               </button>
               {isExpanded && !isLocked && (
-                <div className="px-4 pb-4 border-t border-gray-100/80 animate-fade-slide-up">
+                <div className="px-4 pb-4 border-t border-[#E5E9EC]/80 animate-fade-slide-up">
                   {idx === 3 ? <RequirementsContent docStatuses={docStatuses} isCurrent={isCurrent} /> : <StepDetailContent stepIdx={idx} isCurrent={isCurrent} />}
                 </div>
               )}
@@ -243,13 +265,13 @@ function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }
 function ProceedModal({ open, onCancel, onConfirm }: { open: boolean; onCancel: () => void; onConfirm: () => void }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(11,42,74,0.6)', backdropFilter: 'blur(6px)' }}>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 animate-scale-in">
-        <h2 className="text-lg font-bold text-gray-900 mb-2 text-center">Proceed with your application?</h2>
-        <p className="text-sm text-gray-600 mb-6 leading-relaxed text-justify">Do you want to proceed with your application to the next stage? You will move on to the <strong className="text-gray-900">Initial Interview</strong>, <strong className="text-gray-900">Assessment</strong>, <strong className="text-gray-900">Department Interview</strong>, and <strong className="text-gray-900">Requirements</strong> submission.</p>
+        <h2 className="text-lg font-bold text-[#0B2A4A] mb-2 text-center">Proceed with your application?</h2>
+        <p className="text-sm mb-6 leading-relaxed text-justify" style={{ color: '#6B7A8D' }}>Do you want to proceed with your application to the next stage? You will move on to the <strong className="text-[#0B2A4A]">Initial Interview</strong>, <strong className="text-[#0B2A4A]">Assessment</strong>, <strong className="text-[#0B2A4A]">Department Interview</strong>, and <strong className="text-[#0B2A4A]">Requirements</strong> submission.</p>
         <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:from-[#0D47A1] hover:to-[#1565C0] transition-all text-sm shadow-md">Yes, Continue</button>
+          <button onClick={onCancel} className="flex-1 py-2.5 border text-[#0B2A4A] font-semibold rounded-lg hover:bg-[#F7F9FA] transition-colors text-sm" style={{ borderColor: '#E5E9EC' }}>Cancel</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 transition-all text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Yes, Continue</button>
         </div>
       </div>
     </div>
@@ -259,19 +281,19 @@ function ProceedModal({ open, onCancel, onConfirm }: { open: boolean; onCancel: 
 function CongratsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(11,42,74,0.6)', backdropFilter: 'blur(6px)' }}>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-7 text-center animate-scale-in">
         <div className="relative w-16 h-16 mx-auto mb-4">
           <div className="absolute inset-0 bg-green-100 rounded-full animate-pulse-ring" />
           <div className="relative w-16 h-16 bg-green-100 rounded-full flex items-center justify-center"><Sparkles className="w-8 h-8 text-green-600" /></div>
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Congratulations! 🎉</h2>
-        <p className="text-sm text-gray-600 mb-5 leading-relaxed">You have successfully completed every step of the hiring process. Welcome to the Arvin family!</p>
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 text-left space-y-2">
-          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-blue-900"><Building2 className="w-4 h-4 text-blue-600" />About Arvin International Marketing Inc.</div>
-          <p className="text-xs text-blue-800 leading-relaxed text-justify">Arvin International Marketing Inc. is a Philippine-based company committed to delivering quality products and services while fostering growth, integrity, and excellence among its people. Our HR team will be in touch shortly with details on your onboarding, start date, and the documents you need to complete employment.</p>
+        <h2 className="text-xl font-bold text-[#0B2A4A] mb-2">Congratulations! 🎉</h2>
+        <p className="text-sm mb-5 leading-relaxed" style={{ color: '#6B7A8D' }}>You have successfully completed every step of the hiring process. Welcome to the Arvin family!</p>
+        <div className="rounded-xl p-4 mb-6 text-left space-y-2" style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}>
+          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[#0B2A4A]"><Building2 className="w-4 h-4" style={{ color: '#12B6D6' }} />About Arvin International Marketing Inc.</div>
+          <p className="text-xs leading-relaxed text-justify text-[#0B2A4A]/80">Arvin International Marketing Inc. is a Philippine-based company committed to delivering quality products and services while fostering growth, integrity, and excellence among its people. Our HR team will be in touch shortly with details on your onboarding, start date, and the documents you need to complete employment.</p>
         </div>
-        <button onClick={onClose} className="w-full py-2.5 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:from-[#0D47A1] hover:to-[#1565C0] transition-all text-sm shadow-md">OK</button>
+        <button onClick={onClose} className="w-full py-2.5 text-white font-semibold rounded-lg hover:opacity-90 transition-all text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>OK</button>
       </div>
     </div>
   );
@@ -309,24 +331,24 @@ export default function ApplicantDashboard() {
     });
   };
 
-  if (status === 'loading') return <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>;
+  if (status === 'loading') return <div className="flex items-center justify-center h-screen" style={{ color: '#6B7A8D' }}>Loading...</div>;
   if (!session && !demoUser) return null;
 
   const name = session?.user?.name || demoUser?.name || 'Applicant';
   const firstName = name.split(' ')[0];
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8f1fc_0%,_#f0f5fb_55%)]">
-      <nav className="bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#F7F9FA]">
+      <nav className="bg-white/90 backdrop-blur-sm border-b border-[#E5E9EC] shadow-sm sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold tracking-[0.2em] bg-gradient-to-r from-[#0D47A1] to-[#1E88E5] bg-clip-text text-transparent">ARVIN</span>
-            <span className="hidden sm:block text-[11px] text-gray-400 border-l border-gray-200 pl-2.5 ml-0.5 leading-tight">International<br />Marketing Inc.</span>
+            <span className="text-2xl font-bold tracking-[0.2em] text-[#0B2A4A]">ARVIN</span>
+            <span className="hidden sm:block text-[11px] border-l pl-2.5 ml-0.5 leading-tight" style={{ color: '#9BAAB8', borderColor: '#E5E9EC' }}>International<br />Marketing Inc.</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center ring-2 ring-blue-50"><User className="w-4 h-4 text-blue-700" /></div>
-              <span className="hidden sm:block text-sm font-medium text-gray-700">{name}</span>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2" style={{ backgroundColor: '#EEF9FB', boxShadow: '0 0 0 2px #F7F9FA' }}><User className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
+              <span className="hidden sm:block text-sm font-medium text-[#0B2A4A]">{name}</span>
             </div>
             <button onClick={() => { clearDemoUser(); void signOut({ callbackUrl: '/login' }); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 active:scale-95 transition-all">
               <LogOut className="w-3.5 h-3.5" /> Logout
@@ -335,17 +357,17 @@ export default function ApplicantDashboard() {
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5">
-        <div className="relative bg-gradient-to-br from-[#0D47A1] via-[#1565C0] to-[#1E88E5] rounded-2xl px-7 py-8 text-white shadow-lg shadow-blue-900/10 overflow-hidden animate-fade-slide-up">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+        <div className="relative rounded-2xl px-7 py-8 sm:py-10 text-white shadow-sm overflow-hidden animate-fade-slide-up" style={{ backgroundColor: '#0B2A4A' }}>
           <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 1.5px 1.5px, white 1.5px, transparent 0)', backgroundSize: '22px 22px' }} />
           <h1 className="relative text-2xl sm:text-3xl font-bold mb-1.5">Welcome back, {firstName}! 👋</h1>
-          <p className="relative text-blue-100 text-sm sm:text-base">{"Here's the current status of your application at Arvin International."}</p>
+          <p className="relative text-sm sm:text-base" style={{ color: '#B8EAF3' }}>{"Here's the current status of your application at Arvin International."}</p>
         </div>
 
         {!application ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center animate-fade-slide-up delay-1">
-            <p className="text-gray-600 mb-4">{"You haven't submitted an application yet."}</p>
-            <Link href="/apply" className="inline-block px-6 py-2.5 bg-gradient-to-r from-[#1565C0] to-[#1E88E5] text-white font-semibold rounded-xl hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 text-sm">Start Your Application</Link>
+          <div className="bg-white rounded-2xl shadow-sm border border-[#E5E9EC] p-8 text-center animate-fade-slide-up delay-1">
+            <p className="mb-4" style={{ color: '#6B7A8D' }}>{"You haven't submitted an application yet."}</p>
+            <Link href="/apply" className="inline-block px-6 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Start Your Application</Link>
           </div>
         ) : showHiringProcess ? (
           <HiringProcessCard key={hiringCompletedSteps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} onSimulateHrComplete={handleSimulateHrComplete} />

@@ -1,496 +1,1211 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import {
+  Trophy, MapPin, TrendingUp, ShieldCheck, Users, Banknote,
+  UserPlus, ClipboardList, Upload, Send, Eye, Unlock,
+  ChevronRight, Menu, X, Briefcase, Clock, Building2,
+  CheckCircle2, ArrowRight, LogIn, UserCheck, Search,
+} from 'lucide-react';
 
-type Step = 1 | 2 | 3 | 4;
+/* ─── DATA ─────────────────────────────────────────────────────────────────── */
 
-type PositionOption = {
-  id: string;
+const NAV_LINKS = ['Home', 'Open Positions', 'How to Apply', 'Contact'];
+
+const WHY_CARDS = [
+  {
+    icon: Trophy,
+    title: 'Industry Leader',
+    desc: "Join the #1 salt supplier in the Philippines with over 70% market share — a brand that commands national respect for over four decades.",
+  },
+  {
+    icon: MapPin,
+    title: 'Nationwide Presence',
+    desc: 'Operate across 16 warehouses nationwide. Gain exposure to large-scale logistics, distribution, and a network that spans every major region.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Room to Grow',
+    desc: 'We invest in our people through structured training, mentorship, and clear career paths across sales, marketing, operations, and more.',
+  },
+  {
+    icon: ShieldCheck,
+    title: '40 Years of Stability',
+    desc: 'Since 1984, Arvin International has never stopped growing. Join a company with proven financial strength and a long-term vision.',
+  },
+  {
+    icon: Banknote,
+    title: 'Competitive Benefits',
+    desc: 'Enjoy competitive compensation, HMO coverage, government-mandated benefits, and performance bonuses that reward your hard work.',
+  },
+  {
+    icon: Users,
+    title: 'People-First Culture',
+    desc: 'Our teams are built on trust, respect, and collaboration. We work hard together — and we take the time to celebrate wins together.',
+  },
+];
+
+type Job = {
   title: string;
-  employmentType: string;
+  dept: string;
+  location: string;
+  type: string;
+  level: string;
+  summary: string;
+  responsibilities: string[];
+  qualifications: string[];
 };
 
-export default function ApplicationForm() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<Step>(1);
-  const [positions, setPositions] = useState<PositionOption[]>([]);
-  const [loading, setLoading] = useState(false);
+const ALL_JOBS: Job[] = [
+  {
+    title: 'Marketing Specialist',
+    dept: 'Marketing',
+    location: 'Quezon City, Metro Manila',
+    type: 'Full-time',
+    level: 'Mid-level',
+    summary: "Drive brand awareness and marketing campaigns for Arvin International's product lines including salt, chemical, and agricultural products. Collaborate with the sales team to generate leads and grow market share.",
+    responsibilities: [
+      'Develop and execute marketing campaigns across digital and traditional channels',
+      'Create content for social media, print, and promotional materials',
+      'Coordinate with the sales team on product launches and promotions',
+      'Analyze campaign performance and prepare reports for management',
+      'Manage relationships with advertising agencies and media partners',
+    ],
+    qualifications: [
+      "Bachelor's degree in Marketing, Business Administration, or related field",
+      'At least 2 years of experience in marketing or advertising',
+      'Strong written and verbal communication skills',
+      'Proficient in MS Office; knowledge of Canva or Adobe Suite is a plus',
+      'Highly organized, creative, and results-driven',
+    ],
+  },
+  {
+    title: 'Sales Representative',
+    dept: 'Sales',
+    location: 'Multiple Locations Nationwide',
+    type: 'Full-time',
+    level: 'Entry to Mid-level',
+    summary: "Grow Arvin International's client base by selling our salt, chemical, and agricultural products to businesses across your assigned territory. Build lasting relationships with distributors, retailers, and industrial clients.",
+    responsibilities: [
+      'Prospect and acquire new business accounts in the assigned territory',
+      'Meet or exceed monthly and quarterly sales targets',
+      'Maintain strong relationships with existing clients and distributors',
+      'Present product offerings and negotiate contracts',
+      'Submit regular sales reports and forecasts to the Sales Manager',
+    ],
+    qualifications: [
+      "Bachelor's degree in any Business-related course",
+      'Prior sales experience preferred but not required — we train motivated individuals',
+      'Excellent interpersonal and negotiation skills',
+      'Willing to travel within the assigned territory',
+      'Self-motivated with a competitive drive to succeed',
+    ],
+  },
+  {
+    title: 'Business Development Manager',
+    dept: 'Business Development',
+    location: 'Head Office, Metro Manila',
+    type: 'Full-time',
+    level: 'Senior-level',
+    summary: 'Lead strategic growth initiatives for Arvin International by identifying new market opportunities, forging key partnerships, and expanding our footprint in chemical and agricultural product distribution.',
+    responsibilities: [
+      'Identify and pursue new business opportunities in target industries',
+      'Build and manage partnerships with key accounts, suppliers, and distributors',
+      'Develop go-to-market strategies for new product lines',
+      'Lead contract negotiations and close high-value deals',
+      'Collaborate with senior leadership on growth strategy and planning',
+    ],
+    qualifications: [
+      "Bachelor's degree in Business, Economics, or related field; MBA is an advantage",
+      'At least 5 years of experience in business development or strategic sales',
+      'Strong network in the manufacturing, distribution, or agri-chemical sectors',
+      'Excellent leadership, analytical, and presentation skills',
+      'Proven track record of meeting revenue targets',
+    ],
+  },
+  {
+    title: 'Logistics Coordinator',
+    dept: 'Operations',
+    location: 'Nationwide (Various Depots)',
+    type: 'Full-time',
+    level: 'Entry to Mid-level',
+    summary: "Coordinate and oversee the movement of goods across Arvin International's 16-warehouse distribution network. Ensure timely deliveries and accurate inventory management.",
+    responsibilities: [
+      'Coordinate inbound and outbound shipments across all warehouse locations',
+      'Monitor inventory levels and trigger replenishment orders',
+      'Liaise with trucking partners and third-party logistics providers',
+      'Maintain accurate logistics records and prepare delivery reports',
+      'Resolve shipping discrepancies and escalate issues as needed',
+    ],
+    qualifications: [
+      "Bachelor's degree in Supply Chain Management, Industrial Engineering, or related field",
+      'Knowledge of warehouse operations and logistics processes',
+      'Strong organizational and problem-solving skills',
+      'Proficient in Microsoft Excel and logistics software',
+      'Willing to be assigned to any depot location',
+    ],
+  },
+  {
+    title: 'Accounting Staff',
+    dept: 'Finance',
+    location: 'Head Office, Metro Manila',
+    type: 'Full-time',
+    level: 'Entry-level',
+    summary: "Support the Finance team in maintaining accurate financial records, processing transactions, and preparing reports that guide the company's day-to-day financial operations.",
+    responsibilities: [
+      'Record and reconcile daily financial transactions',
+      'Prepare accounts payable and receivable reports',
+      'Assist in month-end and year-end closing activities',
+      'Ensure compliance with BIR regulations and internal policies',
+      'Respond to finance-related inquiries from internal teams',
+    ],
+    qualifications: [
+      "Bachelor's degree in Accountancy, Financial Management, or related course",
+      'CPA license is a plus but not required',
+      'Keen attention to detail and strong numerical aptitude',
+      'Proficient in MS Excel and accounting software (QuickBooks, SAP, or similar)',
+      'Fresh graduates are welcome to apply',
+    ],
+  },
+  {
+    title: 'Warehouse Supervisor',
+    dept: 'Operations',
+    location: 'Nationwide (Warehouse Assignments)',
+    type: 'Full-time',
+    level: 'Mid to Senior-level',
+    summary: "Lead day-to-day warehouse operations to ensure efficient storage, handling, and dispatch of Arvin International's products. Maintain safety standards and team productivity.",
+    responsibilities: [
+      'Supervise warehouse staff and daily operations including receiving and dispatch',
+      'Ensure accurate inventory counts and stock movement documentation',
+      'Maintain a safe, clean, and organized warehouse environment',
+      'Coordinate with the logistics team for on-time delivery schedules',
+      'Train and evaluate warehouse personnel performance',
+    ],
+    qualifications: [
+      "Bachelor's degree in any course; Industrial Engineering preferred",
+      'At least 3 years of warehouse supervisory experience',
+      'Strong leadership and team management skills',
+      'Familiarity with warehouse management systems (WMS)',
+      'Physically fit and willing to work on-site',
+    ],
+  },
+];
 
-  const [formData, setFormData] = useState({
-    // Step 1
-    fullName: session?.user?.name || '',
-    email: session?.user?.email || '',
-    phoneNumber: '',
-    homeAddress: '',
-    dateOfBirth: '',
-    gender: '',
-    heardAboutUs: '',
+const HOW_STEPS = [
+  { icon: UserPlus, title: 'Register', desc: 'Create your applicant account using your email address.' },
+  { icon: ClipboardList, title: 'Fill Out the Form', desc: 'Enter your personal details, work experience, and educational background.' },
+  { icon: Upload, title: 'Upload Your Resume', desc: 'Attach your resume in PDF or DOCX format.' },
+  { icon: Send, title: 'Submit', desc: 'Your application goes directly to our HR team for review.' },
+  { icon: Eye, title: 'Check Your Status', desc: 'Log in anytime to see your real-time application progress.' },
+  { icon: Unlock, title: 'Complete Requirements', desc: 'If shortlisted, your portal unlocks next steps and required documents.' },
+];
 
-    // Step 2
-    positionId: '',
-    preferredStartDate: '',
-    message: '',
+const STATUS_STEPS = ['Submitted', 'Under Review', 'Result'];
 
-    // Step 3
-    resume: null as File | null,
-    coverLetter: null as File | null,
-    portfolioUrl: '',
-  });
+/* ─── HELPERS ───────────────────────────────────────────────────────────────── */
+
+function useInView(threshold = 0.2) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+function FadeSection({
+  children,
+  className = '',
+  style = {},
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const { ref, visible } = useInView(0.1);
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        ...style,
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(24px)',
+        transition: 'opacity 0.55s ease, transform 0.55s ease',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ─── AUTH MODAL (no backend yet — logs to console only) ────────────────────── */
+
+function AuthModal({
+  mode,
+  onClose,
+  onSwitch,
+}: {
+  mode: 'login' | 'register';
+  onClose: () => void;
+  onSwitch: () => void;
+}) {
+  const isLogin = mode === 'login';
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', h);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', h);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
 
-  const fetchPositions = async () => {
-    try {
-      const res = await fetch('/api/positions');
-      if (res.ok) {
-        const data = await res.json();
-        setPositions(data);
-      }
-    } catch (error) {
-      console.error('Error fetching positions:', error);
-    }
-  };
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchPositions();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, files } = e.target;
-    if (files?.[0]) {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: files[0],
-      }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('positionId', formData.positionId);
-      formDataToSend.append('phoneNumber', formData.phoneNumber);
-      formDataToSend.append('homeAddress', formData.homeAddress);
-      formDataToSend.append('dateOfBirth', formData.dateOfBirth);
-      formDataToSend.append('gender', formData.gender);
-      formDataToSend.append('heardAboutUs', formData.heardAboutUs);
-      formDataToSend.append('preferredStartDate', formData.preferredStartDate);
-      formDataToSend.append('message', formData.message);
-      formDataToSend.append('portfolioUrl', formData.portfolioUrl);
-
-      if (formData.resume) {
-        formDataToSend.append('resume', formData.resume);
-      }
-      if (formData.coverLetter) {
-        formDataToSend.append('coverLetter', formData.coverLetter);
-      }
-
-      const res = await fetch('/api/applications', {
-        method: 'POST',
-        body: formDataToSend,
-      });
-
-      if (res.ok) {
-        router.push('/dashboard?success=true');
-      } else {
-        const error = await res.json();
-        alert(error.error || 'Failed to submit application');
-      }
-    } catch (error) {
-      console.error('Error submitting application:', error);
-      alert('An error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    // TODO: connect authentication here later (next-auth signIn / register API call).
+    console.log(isLogin ? 'Login attempt:' : 'Register attempt:', { fullName, email, password });
+    onClose();
   };
-
-  if (status === 'loading') {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-
-  if (!session) return null;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8f1fc_0%,_#f8fafc_55%)] py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8 animate-fade-slide-up">
-          <h1 className="text-3xl font-bold text-[#1B3A5C] mb-2 tracking-wide">
-            ARVIN INTERNATIONAL
-          </h1>
-          <p className="text-gray-600 italic">Moving Ahead to Serve You Better</p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(11,42,74,0.6)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-md"
+        style={{ borderRadius: '14px', animation: 'slideUp 0.28s cubic-bezier(0.22,1,0.36,1)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-7 pt-6 pb-4" style={{ borderBottom: '1px solid #E5E9EC' }}>
+          <div className="flex items-center gap-2">
+            {isLogin ? (
+              <LogIn size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+            ) : (
+              <UserCheck size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+            )}
+            <h2 className="text-lg font-bold" style={{ color: '#0B2A4A' }}>
+              {isLogin ? 'Log In to Your Account' : 'Create an Account'}
+            </h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            <X size={18} style={{ color: '#6B7A8D' }} />
+          </button>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8 animate-fade-slide-up delay-1">
-          <div className="flex justify-between mb-2">
-            {[1, 2, 3, 4].map((step) => (
-              <div
-                key={step}
-                className={`h-2 flex-1 mx-1 rounded-full transition-colors duration-500 ${
-                  step <= currentStep ? 'bg-gradient-to-r from-[#00AEEF] to-[#1B3A5C]' : 'bg-gray-200'
-                }`}
-              />
-            ))}
-          </div>
-          <div className="flex justify-between text-sm font-medium">
-            <span className={`transition-colors duration-300 ${currentStep >= 1 ? 'text-[#00AEEF]' : 'text-gray-400'}`}>
-              Personal
-            </span>
-            <span className={`transition-colors duration-300 ${currentStep >= 2 ? 'text-[#00AEEF]' : 'text-gray-400'}`}>
-              Position
-            </span>
-            <span className={`transition-colors duration-300 ${currentStep >= 3 ? 'text-[#00AEEF]' : 'text-gray-400'}`}>
-              Documents
-            </span>
-            <span className={`transition-colors duration-300 ${currentStep >= 4 ? 'text-[#00AEEF]' : 'text-gray-400'}`}>
-              Review
-            </span>
-          </div>
-        </div>
-
-        {/* Form Card */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl shadow-blue-900/5 border border-gray-100 p-8 animate-fade-slide-up delay-2">
-          {/* Step 1: Personal Information */}
-          {currentStep === 1 && (
+        <form className="px-7 py-6 flex flex-col gap-4" onSubmit={handleSubmit}>
+          {!isLogin && (
             <div>
-              <h2 className="text-2xl font-bold text-[#1B3A5C] mb-6 animate-fade-slide-up">Personal Information</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    disabled
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-100 text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    disabled
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-100 text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
-                    placeholder="09XXXXXXXXX"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Home Address *
-                  </label>
-                  <input
-                    type="text"
-                    name="homeAddress"
-                    value={formData.homeAddress}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
-                    placeholder="Enter your home address"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Date of Birth *
-                  </label>
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Gender *
-                  </label>
-                  <select
-                    name="gender"
-                    value={formData.gender}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
-                  >
-                    <option value="">Select a gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Prefer not to say">Prefer not to say</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    How did you hear about us? *
-                  </label>
-                  <select
-                    name="heardAboutUs"
-                    value={formData.heardAboutUs}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
-                  >
-                    <option value="">Select an option</option>
-                    <option value="LinkedIn">LinkedIn</option>
-                    <option value="Jobstreet">Jobstreet</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Walk-in">Walk-in</option>
-                    <option value="Others">Others</option>
-                  </select>
-                </div>
-              </div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Juan dela Cruz"
+                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+                style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
+                onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
+                onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
+              />
             </div>
           )}
+          <div>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@email.com"
+              className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+              style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
+              onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
+              onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+              style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
+              onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
+              onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 mt-1"
+            style={{ backgroundColor: '#0B2A4A', borderRadius: '8px' }}
+          >
+            {isLogin ? 'Log In' : 'Create Account'}
+          </button>
+          <p className="text-center text-xs" style={{ color: '#9BAAB8' }}>
+            {isLogin ? "Don't have an account? " : 'Already have an account? '}
+            <button type="button" onClick={onSwitch} className="font-semibold underline" style={{ color: '#12B6D6' }}>
+              {isLogin ? 'Register' : 'Log In'}
+            </button>
+          </p>
+        </form>
+      </div>
+    </div>
+  );
+}
 
-          {/* Step 2: Position & Availability */}
-          {currentStep === 2 && (
+/* ─── JOB MODAL ─────────────────────────────────────────────────────────────── */
+
+function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', h);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', h);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6"
+      style={{ backgroundColor: 'rgba(11,42,74,0.6)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto"
+        style={{ borderRadius: '16px 16px 0 0', animation: 'slideUp 0.3s cubic-bezier(0.22,1,0.36,1)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white z-10 flex items-start justify-between gap-4 px-7 py-5" style={{ borderBottom: '1px solid #E5E9EC' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#12B6D6' }}>
+              {job.dept} · {job.level}
+            </p>
+            <h2 className="text-xl font-bold" style={{ color: '#0B2A4A' }}>
+              {job.title}
+            </h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0">
+            <X size={18} style={{ color: '#6B7A8D' }} />
+          </button>
+        </div>
+
+        <div className="px-7 py-6 flex flex-col gap-6">
+          <div className="flex flex-wrap gap-3">
+            {[
+              { icon: MapPin, label: job.location },
+              { icon: Clock, label: job.type },
+              { icon: Building2, label: job.dept },
+            ].map(({ icon: Icon, label }) => (
+              <div
+                key={label}
+                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full"
+                style={{ backgroundColor: '#F7F9FA', color: '#6B7A8D', border: '1px solid #E5E9EC' }}
+              >
+                <Icon size={13} strokeWidth={1.5} />
+                {label}
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold mb-2" style={{ color: '#0B2A4A' }}>
+              About the Role
+            </h3>
+            <p className="text-sm leading-relaxed" style={{ color: '#6B7A8D' }}>
+              {job.summary}
+            </p>
+          </div>
+
+          {[
+            { title: 'Key Responsibilities', items: job.responsibilities },
+            { title: 'Qualifications', items: job.qualifications },
+          ].map(({ title, items }) => (
+            <div key={title}>
+              <h3 className="text-sm font-semibold mb-3" style={{ color: '#0B2A4A' }}>
+                {title}
+              </h3>
+              <ul className="flex flex-col gap-2.5">
+                {items.map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm" style={{ color: '#6B7A8D' }}>
+                    <CheckCircle2 size={15} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          <Link
+            href="/apply"
+            className="w-full py-3.5 text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#0B2A4A', borderRadius: '8px' }}
+          >
+            Apply for This Position <ArrowRight size={15} />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── ALL POSITIONS MODAL ────────────────────────────────────────────────────── */
+
+function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelect: (job: Job) => void }) {
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', h);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', h);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  const filtered = ALL_JOBS.filter(
+    (j) => j.title.toLowerCase().includes(search.toLowerCase()) || j.dept.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6"
+      style={{ backgroundColor: 'rgba(11,42,74,0.6)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto"
+        style={{ borderRadius: '16px 16px 0 0', animation: 'slideUp 0.3s cubic-bezier(0.22,1,0.36,1)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white z-10 px-7 py-5" style={{ borderBottom: '1px solid #E5E9EC' }}>
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-[#1B3A5C] mb-6 animate-fade-slide-up">Position & Availability</h2>
-              <div className="space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#12B6D6' }}>
+                Now Hiring
+              </p>
+              <h2 className="text-xl font-bold" style={{ color: '#0B2A4A' }}>
+                All Open Positions
+              </h2>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+              <X size={18} style={{ color: '#6B7A8D' }} />
+            </button>
+          </div>
+          <div className="relative">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#9BAAB8' }} />
+            <input
+              type="text"
+              placeholder="Search positions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 text-sm outline-none"
+              style={{ border: '1px solid #E5E9EC', borderRadius: '8px', backgroundColor: '#F7F9FA', color: '#0B2A4A' }}
+            />
+          </div>
+        </div>
+
+        <div className="px-7 py-5 flex flex-col gap-3">
+          {filtered.length === 0 && (
+            <p className="text-sm text-center py-8" style={{ color: '#9BAAB8' }}>
+              No positions match your search.
+            </p>
+          )}
+          {filtered.map((job) => (
+            <div
+              key={job.title}
+              className="flex items-center justify-between gap-4 p-5 rounded-xl transition-all cursor-pointer hover:shadow-sm"
+              style={{ border: '1px solid #E5E9EC', backgroundColor: '#fff' }}
+              onClick={() => {
+                onClose();
+                setTimeout(() => onSelect(job), 80);
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-10 h-10 flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: '#EEF9FB', borderRadius: '8px' }}
+                >
+                  <Briefcase size={16} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+                </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Position Applied For *
-                  </label>
-                  <select
-                    name="positionId"
-                    value={formData.positionId}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
+                  <p className="text-sm font-semibold" style={{ color: '#0B2A4A' }}>
+                    {job.title}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs" style={{ color: '#9BAAB8' }}>
+                      {job.dept}
+                    </span>
+                    <span style={{ color: '#D1DAE3' }}>·</span>
+                    <span className="text-xs" style={{ color: '#9BAAB8' }}>
+                      {job.level}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span
+                  className="text-xs font-semibold px-2.5 py-1 hidden sm:block"
+                  style={{ color: '#12B6D6', backgroundColor: '#EEF9FB', borderRadius: '4px', border: '1px solid #B8EAF3' }}
+                >
+                  {job.type}
+                </span>
+                <ChevronRight size={16} style={{ color: '#9BAAB8' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── MAIN LANDING PAGE ──────────────────────────────────────────────────────── */
+
+export default function HomePage() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeStatus] = useState(1);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [authMode, setAuthMode] = useState<'login' | 'register' | null>(null);
+  const [showAllJobs, setShowAllJobs] = useState(false);
+  const positionsRef = useRef<HTMLElement>(null);
+
+  const scrollToPositions = () => {
+    positionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-[#0B2A4A]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(40px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+        @keyframes heroPop {
+          from { transform: translateY(16px) scale(0.98); opacity: 0; }
+          to   { transform: translateY(0) scale(1);       opacity: 1; }
+        }
+        @keyframes ticker {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+        .card-lift { transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease; }
+        .card-lift:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(11,42,74,0.09); border-color: #12B6D6 !important; }
+        .ticker-track { display: flex; animation: ticker 28s linear infinite; }
+        .ticker-track:hover { animation-play-state: paused; }
+      `}</style>
+
+      {/* ── HEADER ── */}
+      <header className="sticky top-0 z-40 bg-white" style={{ borderBottom: '1px solid #E5E9EC' }}>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Arvin International logo" className="h-9 w-9 object-contain" />
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-bold tracking-tight" style={{ color: '#0B2A4A' }}>
+                Arvin International Marketing Inc.
+              </span>
+              <span className="text-[10px] font-semibold tracking-[0.14em] uppercase" style={{ color: '#12B6D6' }}>
+                Careers
+              </span>
+            </div>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-8">
+            {NAV_LINKS.map((link) => (
+              <button
+                key={link}
+                onClick={link === 'Open Positions' ? scrollToPositions : undefined}
+                className="text-sm text-[#0B2A4A] font-medium relative group transition-colors bg-transparent border-none cursor-pointer"
+              >
+                {link}
+                <span
+                  className="absolute -bottom-0.5 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-200"
+                  style={{ backgroundColor: '#12B6D6' }}
+                />
+              </button>
+            ))}
+          </nav>
+
+          <div className="hidden md:flex items-center gap-4">
+            <button
+              onClick={() => setAuthMode('login')}
+              className="text-sm font-medium transition-colors bg-transparent border-none cursor-pointer"
+              style={{ color: '#0B2A4A' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#12B6D6')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#0B2A4A')}
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => setAuthMode('register')}
+              className="text-sm font-semibold text-white px-4 py-2 hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#0B2A4A', borderRadius: '6px' }}
+            >
+              Register
+            </button>
+          </div>
+
+          <button className="md:hidden text-[#0B2A4A] p-1" onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+
+        {mobileOpen && (
+          <div className="md:hidden bg-white border-t px-6 py-4 flex flex-col gap-4" style={{ borderColor: '#E5E9EC' }}>
+            {NAV_LINKS.map((link) => (
+              <button
+                key={link}
+                onClick={() => {
+                  if (link === 'Open Positions') {
+                    scrollToPositions();
+                    setMobileOpen(false);
+                  }
+                }}
+                className="text-sm font-medium text-[#0B2A4A] text-left bg-transparent border-none cursor-pointer"
+              >
+                {link}
+              </button>
+            ))}
+            <hr style={{ borderColor: '#E5E9EC' }} />
+            <button
+              onClick={() => {
+                setAuthMode('login');
+                setMobileOpen(false);
+              }}
+              className="text-sm font-medium text-[#0B2A4A] text-left bg-transparent border-none cursor-pointer"
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => {
+                setAuthMode('register');
+                setMobileOpen(false);
+              }}
+              className="text-sm font-semibold text-white px-4 py-2 w-full"
+              style={{ backgroundColor: '#0B2A4A', borderRadius: '6px' }}
+            >
+              Register
+            </button>
+          </div>
+        )}
+      </header>
+
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden bg-white">
+        <div
+          className="absolute top-0 right-0 w-[480px] h-[480px] pointer-events-none"
+          style={{ background: 'radial-gradient(circle at 80% 20%, rgba(18,182,214,0.08) 0%, transparent 70%)' }}
+        />
+
+        <div className="max-w-7xl mx-auto px-6 py-20 md:py-28 grid grid-cols-1 md:grid-cols-[55fr_45fr] gap-12 md:gap-16 items-center">
+          <div className="flex flex-col gap-6" style={{ animation: 'heroPop 0.6s cubic-bezier(0.22,1,0.36,1) both' }}>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-[2px] rounded" style={{ backgroundColor: '#12B6D6' }} />
+              <p className="text-xs font-semibold tracking-[0.18em] uppercase" style={{ color: '#12B6D6' }}>
+                Arvin International Marketing Inc.
+              </p>
+            </div>
+            <h1 className="text-4xl md:text-[52px] font-bold leading-[1.1] tracking-tight" style={{ color: '#0B2A4A' }}>
+              Build Your Career With the Philippines&apos; <span style={{ color: '#12B6D6' }}>No.&nbsp;1</span> Salt Provider
+            </h1>
+            <p className="text-base md:text-lg leading-relaxed max-w-lg" style={{ color: '#6B7A8D' }}>
+              Apply online, track your application in real time, and hear back faster — no office visit required.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Link
+                href="/apply"
+                className="px-6 py-3.5 text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:scale-[1.02] w-full sm:w-auto"
+                style={{ backgroundColor: '#0B2A4A', borderRadius: '8px' }}
+              >
+                Apply Now <ArrowRight size={15} />
+              </Link>
+              <button
+                onClick={() => setAuthMode('register')}
+                className="px-6 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 transition-all w-full sm:w-auto hover:bg-[#0B2A4A] hover:text-white"
+                style={{ border: '1.5px solid #0B2A4A', color: '#0B2A4A', backgroundColor: 'transparent', borderRadius: '8px' }}
+              >
+                Create an Account
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-4 pt-2">
+              {['#1 Salt Supplier in PH', '40+ Years in Business', '16 Warehouses Nationwide'].map((badge) => (
+                <div key={badge} className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#6B7A8D' }}>
+                  <CheckCircle2 size={13} strokeWidth={2} style={{ color: '#12B6D6' }} />
+                  {badge}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden" style={{ borderRadius: '14px', animation: 'heroPop 0.7s 0.1s cubic-bezier(0.22,1,0.36,1) both' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/salt-mounds.jpg"
+              alt="Salt mounds — Arvin International, Philippines No. 1 salt provider"
+              className="w-full object-cover"
+              style={{ height: '400px', objectPosition: 'center center' }}
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 h-20 pointer-events-none"
+              style={{ background: 'linear-gradient(to top, rgba(18,182,214,0.15), transparent)' }}
+            />
+            <div
+              className="absolute bottom-5 left-5 flex items-center gap-2.5 px-4 py-2.5"
+              style={{ backgroundColor: 'rgba(11,42,74,0.88)', borderRadius: '10px', backdropFilter: 'blur(8px)' }}
+            >
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#12B6D6' }} />
+              <span className="text-xs font-semibold text-white">Philippines&apos; No. 1 Salt Provider</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TICKER STRIP ── */}
+      <div className="overflow-hidden py-3" style={{ backgroundColor: '#0B2A4A' }}>
+        <div className="ticker-track whitespace-nowrap">
+          {[...Array(2)].map((_, outer) => (
+            <span key={outer} className="inline-flex">
+              {[
+                '#1 Salt Supplier · Philippines',
+                'Est. 1984',
+                '16 Warehouses Nationwide',
+                '70% Market Share',
+                'Salt · Chemicals · Agricultural Products',
+                'Trusted for 40+ Years',
+              ].map((item, i) => (
+                <span key={i} className="inline-flex items-center gap-4 mx-8">
+                  <span className="text-xs font-semibold tracking-widest uppercase text-white/70">{item}</span>
+                  <span style={{ color: '#12B6D6' }}>◆</span>
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── WHY APPLY ── */}
+      <section className="py-20 md:py-28" style={{ backgroundColor: '#F7F9FA', borderBottom: '1px solid #E5E9EC' }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeSection className="text-center mb-14">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+              style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#12B6D6' }} />
+              <span className="text-xs font-semibold tracking-[0.16em] uppercase" style={{ color: '#12B6D6' }}>
+                Why Choose Us
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: '#0B2A4A' }}>
+              Why Apply at Arvin International
+            </h2>
+            <p className="text-base max-w-xl mx-auto" style={{ color: '#6B7A8D' }}>
+              More than a job — a career with one of the Philippines&apos; most trusted companies.
+            </p>
+          </FadeSection>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" style={{ gridAutoRows: '1fr' }}>
+            {WHY_CARDS.map(({ icon: Icon, title, desc }, i) => (
+              <FadeSection key={title} style={{ transitionDelay: `${i * 0.07}s`, height: '100%' }}>
+                <div className="card-lift bg-white p-7 flex flex-col gap-5 h-full" style={{ border: '1px solid #E5E9EC', borderRadius: '12px' }}>
+                  <div
+                    className="w-11 h-11 flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)', borderRadius: '10px' }}
                   >
-                    <option value="">Select a position</option>
-                    {positions.map((pos) => (
-                      <option key={pos.id} value={pos.id}>
-                        {pos.title} ({pos.employmentType})
-                      </option>
-                    ))}
-                  </select>
+                    <Icon size={20} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+                  </div>
+                  <div className="flex flex-col gap-2 flex-1">
+                    <h3 className="text-base font-bold" style={{ color: '#0B2A4A' }}>
+                      {title}
+                    </h3>
+                    <p className="text-sm leading-relaxed" style={{ color: '#6B7A8D' }}>
+                      {desc}
+                    </p>
+                  </div>
                 </div>
+              </FadeSection>
+            ))}
+          </div>
+        </div>
+      </section>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Preferred Start Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="preferredStartDate"
-                    value={formData.preferredStartDate}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
-                  />
+      {/* ── OPEN POSITIONS ── */}
+      <section ref={positionsRef} className="py-20 md:py-28 bg-white" style={{ borderBottom: '1px solid #E5E9EC' }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeSection className="flex items-end justify-between mb-10 flex-wrap gap-4">
+            <div>
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-3"
+                style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#12B6D6' }} />
+                <span className="text-xs font-semibold tracking-[0.16em] uppercase" style={{ color: '#12B6D6' }}>
+                  Now Hiring
+                </span>
+              </div>
+              <h2 className="text-2xl md:text-4xl font-bold tracking-tight" style={{ color: '#0B2A4A' }}>
+                Open Positions
+              </h2>
+            </div>
+            <button
+              onClick={() => setShowAllJobs(true)}
+              className="text-sm font-semibold px-5 py-2.5 flex items-center gap-2 transition-all hover:opacity-90"
+              style={{ backgroundColor: '#0B2A4A', color: '#fff', borderRadius: '8px' }}
+            >
+              View All Positions <ArrowRight size={14} />
+            </button>
+          </FadeSection>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5" style={{ gridAutoRows: '1fr' }}>
+            {ALL_JOBS.slice(0, 3).map((job, i) => (
+              <FadeSection key={job.title} style={{ transitionDelay: `${i * 0.08}s`, height: '100%' }}>
+                <div className="card-lift bg-white flex flex-col gap-5 p-7 h-full" style={{ border: '1px solid #E5E9EC', borderRadius: '12px' }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className="w-11 h-11 flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)', borderRadius: '10px' }}
+                    >
+                      <Briefcase size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+                    </div>
+                    <span
+                      className="text-xs font-semibold px-2.5 py-1 whitespace-nowrap"
+                      style={{ color: '#12B6D6', backgroundColor: '#EEF9FB', borderRadius: '5px', border: '1px solid #B8EAF3' }}
+                    >
+                      {job.type}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 flex flex-col gap-2">
+                    <h3 className="text-base font-bold leading-snug" style={{ color: '#0B2A4A' }}>
+                      {job.title}
+                    </h3>
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#9BAAB8' }}>
+                      {job.dept}
+                    </p>
+                    <p className="text-sm leading-relaxed mt-1" style={{ color: '#6B7A8D' }}>
+                      {job.summary.slice(0, 100)}…
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#9BAAB8' }}>
+                    <MapPin size={12} strokeWidth={1.5} />
+                    {job.location}
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedJob(job)}
+                    className="mt-auto text-sm font-semibold py-2.5 flex items-center justify-center gap-2 transition-all group"
+                    style={{ border: '1.5px solid #0B2A4A', color: '#0B2A4A', backgroundColor: 'transparent', borderRadius: '8px' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#0B2A4A';
+                      e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#0B2A4A';
+                    }}
+                  >
+                    View Details <ArrowRight size={14} />
+                  </button>
                 </div>
+              </FadeSection>
+            ))}
+          </div>
+        </div>
+      </section>
 
+      {/* ── HOW IT WORKS ── */}
+      <section className="py-20 md:py-28" style={{ backgroundColor: '#F7F9FA', borderBottom: '1px solid #E5E9EC' }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeSection className="text-center mb-14">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+              style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#12B6D6' }} />
+              <span className="text-xs font-semibold tracking-[0.16em] uppercase" style={{ color: '#12B6D6' }}>
+                The Process
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: '#0B2A4A' }}>
+              How It Works
+            </h2>
+            <p className="text-base" style={{ color: '#6B7A8D' }}>
+              Six simple steps from application to offer
+            </p>
+          </FadeSection>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" style={{ gridAutoRows: '1fr' }}>
+            {HOW_STEPS.map(({ icon: Icon, title, desc }, i) => (
+              <FadeSection key={title} style={{ transitionDelay: `${i * 0.07}s`, height: '100%' }}>
+                <div className="card-lift bg-white p-7 flex flex-col gap-4 h-full" style={{ border: '1px solid #E5E9EC', borderRadius: '12px' }}>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                      style={{ backgroundColor: '#0B2A4A', borderRadius: '50%' }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div
+                      className="w-8 h-8 flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #EEF9FB, #D6F4FA)', borderRadius: '8px' }}
+                    >
+                      <Icon size={15} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+                    </div>
+                    <h3 className="text-sm font-bold" style={{ color: '#0B2A4A' }}>
+                      {title}
+                    </h3>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: '#6B7A8D' }}>
+                    {desc}
+                  </p>
+                </div>
+              </FadeSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATUS TRACKER (illustrative preview) ── */}
+      <section className="py-20 md:py-28 bg-white" style={{ borderBottom: '1px solid #E5E9EC' }}>
+        <div className="max-w-3xl mx-auto px-6">
+          <FadeSection className="text-center mb-12">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+              style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#12B6D6' }} />
+              <span className="text-xs font-semibold tracking-[0.16em] uppercase" style={{ color: '#12B6D6' }}>
+                Application Tracking
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: '#0B2A4A' }}>
+              Always Know Where You Stand
+            </h2>
+            <p className="text-base" style={{ color: '#6B7A8D' }}>
+              Your personal dashboard shows your real-time application status.
+            </p>
+          </FadeSection>
+
+          <FadeSection>
+            <div
+              className="px-8 py-10"
+              style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #F0FAFD 100%)', border: '1px solid #B8EAF3', borderRadius: '16px' }}
+            >
+              <div className="flex items-center justify-center gap-0">
+                {STATUS_STEPS.map((step, i) => {
+                  const isActive = i === activeStatus;
+                  const isDone = i < activeStatus;
+                  return (
+                    <div key={step} className="flex items-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div
+                          className="w-12 h-12 flex items-center justify-center font-bold text-sm transition-all"
+                          style={{
+                            borderRadius: '50%',
+                            ...(isDone
+                              ? { backgroundColor: '#12B6D6', color: '#fff', boxShadow: '0 0 0 4px rgba(18,182,214,0.15)' }
+                              : isActive
+                              ? { backgroundColor: '#0B2A4A', color: '#fff', boxShadow: '0 0 0 5px rgba(11,42,74,0.12)' }
+                              : { backgroundColor: '#fff', color: '#9BAAB8', border: '1.5px solid #D1DAE3' }),
+                          }}
+                        >
+                          {isDone ? <CheckCircle2 size={18} strokeWidth={2} /> : i + 1}
+                        </div>
+                        <span className="text-xs font-semibold" style={{ color: isActive ? '#0B2A4A' : isDone ? '#12B6D6' : '#9BAAB8' }}>
+                          {step}
+                        </span>
+                      </div>
+                      {i < STATUS_STEPS.length - 1 && (
+                        <div
+                          className="mx-6 flex-shrink-0"
+                          style={{
+                            width: '80px',
+                            height: '2px',
+                            marginBottom: '28px',
+                            borderRadius: '2px',
+                            backgroundColor: isDone ? '#12B6D6' : '#D1DAE3',
+                            transition: 'background-color 0.3s ease',
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-center text-sm mt-8" style={{ color: '#6B7A8D' }}>
+                Currently showing: <strong style={{ color: '#0B2A4A' }}>Under Review</strong> — our HR team is evaluating your application.
+              </p>
+            </div>
+          </FadeSection>
+        </div>
+      </section>
+
+      {/* ── ABOUT ── */}
+      <section className="py-20 md:py-28" style={{ backgroundColor: '#F7F9FA', borderBottom: '1px solid #E5E9EC' }}>
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
+          <FadeSection className="relative overflow-hidden" style={{ borderRadius: '14px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/salt-mounds.jpg"
+              alt="Salt mounds — Arvin International"
+              className="w-full object-cover"
+              style={{ height: '380px', objectPosition: 'center center' }}
+            />
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: 'linear-gradient(to top right, rgba(11,42,74,0.4), transparent)' }}
+            />
+            <div className="absolute bottom-6 left-6">
+              <span
+                className="text-xs font-bold uppercase tracking-widest px-3 py-1.5"
+                style={{ backgroundColor: '#12B6D6', color: '#fff', borderRadius: '5px' }}
+              >
+                Since 1984
+              </span>
+            </div>
+          </FadeSection>
+
+          <FadeSection className="flex flex-col gap-5">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full self-start"
+              style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#12B6D6' }} />
+              <span className="text-xs font-semibold tracking-[0.16em] uppercase" style={{ color: '#12B6D6' }}>
+                Our Story
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight leading-snug" style={{ color: '#0B2A4A' }}>
+              About Arvin International Marketing Inc.
+            </h2>
+            <p className="text-base leading-relaxed" style={{ color: '#6B7A8D' }}>
+              Since 1984, Arvin International has grown from a local salt trading operation into the Philippines&apos; largest salt
+              importer and distributor, with over 70% market share and 16 warehouses nationwide.
+            </p>
+            <p className="text-base leading-relaxed" style={{ color: '#6B7A8D' }}>
+              Beyond salt, we distribute chemical and agricultural products — serving industries that keep the country running.
+              We&apos;re building the same standard of trust into how we grow our team.
+            </p>
+            <div className="flex gap-6 pt-2 flex-wrap">
+              {[
+                { val: '40+', label: 'Years in Business' },
+                { val: '70%', label: 'Market Share' },
+                { val: '16', label: 'Warehouses' },
+              ].map(({ val, label }, i) => (
+                <div key={label} className={i > 0 ? 'pl-6' : ''} style={i > 0 ? { borderLeft: '1px solid #E5E9EC' } : {}}>
+                  <p className="text-2xl font-bold" style={{ color: '#0B2A4A' }}>
+                    {val}
+                  </p>
+                  <p className="text-xs font-medium uppercase tracking-wider mt-1" style={{ color: '#9BAAB8' }}>
+                    {label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={scrollToPositions}
+              className="self-start mt-2 px-5 py-2.5 text-sm font-semibold flex items-center gap-2 transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#0B2A4A', color: '#fff', borderRadius: '8px' }}
+            >
+              Explore Open Roles <ArrowRight size={14} />
+            </button>
+          </FadeSection>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer style={{ backgroundColor: '#0B2A4A' }} className="pt-14 pb-8">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pb-10" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Arvin International logo" className="h-12 w-12 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Why do you want to join Arvin? (max 500 characters) *
-                  </label>
-                  <textarea
-                    name="message"
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    maxLength={500}
-                    required
-                    rows={5}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100 resize-none"
-                    placeholder="Tell us why you're interested in this position..."
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    {formData.message.length}/500
+                  <p className="text-sm font-bold text-white">Arvin International Marketing Inc.</p>
+                  <p className="text-[10px] font-semibold tracking-[0.14em] uppercase" style={{ color: '#12B6D6' }}>
+                    Careers
                   </p>
                 </div>
               </div>
+              <p className="text-sm italic" style={{ color: '#12B6D6' }}>
+                Moving Ahead to Serve You Better
+              </p>
             </div>
-          )}
-
-          {/* Step 3: Documents */}
-          {currentStep === 3 && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#1B3A5C] mb-6 animate-fade-slide-up">Documents</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Resume (PDF, max 5MB) * <span className="text-red-500">Required</span>
-                  </label>
-                  <input
-                    type="file"
-                    name="resume"
-                    onChange={handleFileChange}
-                    accept=".pdf"
-                    required
-                    className="w-full px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/30 transition-all duration-200 cursor-pointer file:cursor-pointer"
-                  />
-                  {formData.resume && (
-                    <p className="text-sm text-green-600 mt-1">
-                      ✓ {formData.resume.name} ({(formData.resume.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Cover Letter (PDF, max 5MB) - Optional
-                  </label>
-                  <input
-                    type="file"
-                    name="coverLetter"
-                    onChange={handleFileChange}
-                    accept=".pdf"
-                    className="w-full px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/30 transition-all duration-200 cursor-pointer file:cursor-pointer"
-                  />
-                  {formData.coverLetter && (
-                    <p className="text-sm text-green-600 mt-1">
-                      ✓ {formData.coverLetter.name} ({(formData.coverLetter.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Portfolio / LinkedIn URL - Optional
-                  </label>
-                  <input
-                    type="url"
-                    name="portfolioUrl"
-                    value={formData.portfolioUrl}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all duration-200 focus:border-[#00AEEF] focus:ring-4 focus:ring-blue-100"
-                    placeholder="https://..."
-                  />
-                </div>
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Quick Links
+              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {NAV_LINKS.map((link) => (
+                  <button
+                    key={link}
+                    onClick={link === 'Open Positions' ? scrollToPositions : undefined}
+                    className="text-sm text-white/70 hover:text-white transition-colors bg-transparent border-none cursor-pointer"
+                  >
+                    {link}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-
-          {/* Step 4: Review */}
-          {currentStep === 4 && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#1B3A5C] mb-6 animate-fade-slide-up">Review Your Application</h2>
-
-              <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 animate-fade-in">
-                <span className="text-blue-500 mt-0.5">ℹ️</span>
-                <p className="text-blue-800 text-sm">
-                  Thank you for your interest in joining the Arvin Family. We will review your application and get back to you soon.
-                </p>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Personal Information</h3>
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div><span className="text-gray-600">Name:</span> <p className="font-medium">{formData.fullName}</p></div>
-                    <div><span className="text-gray-600">Email:</span> <p className="font-medium">{formData.email}</p></div>
-                    <div><span className="text-gray-600">Phone:</span> <p className="font-medium">{formData.phoneNumber}</p></div>
-                    <div><span className="text-gray-600">Gender:</span> <p className="font-medium">{formData.gender}</p></div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Position Details</h3>
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Position:</span>
-                      <p className="font-medium">
-                        {positions.find((p) => p.id === formData.positionId)?.title}
-                      </p>
-                    </div>
-                    <div><span className="text-gray-600">Start Date:</span> <p className="font-medium">{formData.preferredStartDate}</p></div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Documents</h3>
-                  <div className="text-sm space-y-1">
-                    <p><span className="text-gray-600">Resume:</span> {formData.resume?.name || 'Not uploaded'}</p>
-                    <p><span className="text-gray-600">Cover Letter:</span> {formData.coverLetter?.name || 'Not uploaded'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 mb-6">
-                <input type="checkbox" id="confirm" required className="mt-1" />
-                <label htmlFor="confirm" className="text-sm text-gray-700">
-                  I confirm that all information I provided is accurate and complete.
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
-            <button
-              type="button"
-              onClick={() => setCurrentStep((prev) => (prev > 1 ? (prev - 1 as Step) : prev))}
-              disabled={currentStep === 1}
-              className="px-6 py-2.5 border-2 border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent transition-all duration-200"
-            >
-              Previous
-            </button>
-
-            {currentStep < 4 ? (
-              <button
-                type="button"
-                onClick={() => setCurrentStep((prev) => (prev < 4 ? (prev + 1 as Step) : prev))}
-                className="px-6 py-2.5 bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
-              >
-                Next
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-green-500/25 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 transition-all duration-200"
-              >
-                {loading ? 'Submitting...' : 'Submit Application'}
-              </button>
-            )}
           </div>
-        </form>
-      </div>
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              © 2026 Arvin International Marketing Inc. All rights reserved.
+            </p>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Philippines&apos; No. 1 Salt Supplier &amp; Distributor
+            </p>
+          </div>
+        </div>
+      </footer>
+
+      {/* ── MODALS ── */}
+      {selectedJob && <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
+      {authMode && (
+        <AuthModal
+          mode={authMode}
+          onClose={() => setAuthMode(null)}
+          onSwitch={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+        />
+      )}
+      {showAllJobs && <AllPositionsModal onClose={() => setShowAllJobs(false)} onSelect={(job) => setSelectedJob(job)} />}
     </div>
   );
 }
