@@ -8,9 +8,6 @@ import { components } from '@/lib/admin-theme'
 
 // ─── Mock Data ──────────────────────────────────────────────
 // TODO: replace with real data from Supabase once applicants table is wired up.
-// ⬅️ ADDED: `status` field — 'active' or 'rejected'. `stage` is kept as-is
-// even for rejected applicants, so HR can still see WHERE in the pipeline
-// they were rejected (e.g. rejected during "Initial Interview").
 const MOCK_APPLICANTS = [
   { id: 1,  name: 'Maria Santos',     job: 'HR Associate',         dateApplied: '2026-06-02', dateMoved: '2026-06-30', stage: 'Initial Interview',    status: 'active' as const },
   { id: 2,  name: 'Jose Reyes',       job: 'HR Associate',         dateApplied: '2026-06-03', dateMoved: '2026-06-05', stage: 'Applied',               status: 'active' as const },
@@ -22,14 +19,10 @@ const MOCK_APPLICANTS = [
   { id: 8,  name: 'Paolo Garcia',     job: 'Accounting Clerk',     dateApplied: '2026-06-09', dateMoved: '2026-06-11', stage: 'Exam / Assessment',     status: 'active' as const },
   { id: 9,  name: 'Tina Cruz',        job: 'Accounting Clerk',     dateApplied: '2026-06-10', dateMoved: '2026-06-14', stage: 'Initial Interview',    status: 'active' as const },
   { id: 10, name: 'Mark Aquino',      job: 'IT Support Specialist',dateApplied: '2026-06-11', dateMoved: '2026-06-28', stage: 'For Onboarding',        status: 'active' as const },
-  // ⬅️ ADDED — sample rejected applicants, for testing the Rejected tab
   { id: 11, name: 'Bianca Reyes',     job: 'HR Associate',         dateApplied: '2026-06-01', dateMoved: '2026-06-06', stage: 'Initial Interview',    status: 'rejected' as const },
   { id: 12, name: 'Ramon Flores',     job: 'Accounting Clerk',     dateApplied: '2026-06-08', dateMoved: '2026-06-13', stage: 'Exam / Assessment',     status: 'rejected' as const },
 ] as const
 
-// ⬅️ CHANGED: 'Rejected' added at the end. This is a status filter, not a
-// pipeline stage — selecting it switches the view to rejected applicants
-// only, and is handled separately from the stage-matching logic below.
 const TABS = [
   'All',
   'Applied',
@@ -42,7 +35,6 @@ const TABS = [
 
 type Tab = typeof TABS[number]
 
-// Map stage names to existing badge styles from admin-theme
 const STATUS_BADGE: Record<string, string> = {
   'Applied':              components.badge.applied,  
   'Initial Interview':    components.badge.initial,
@@ -51,8 +43,6 @@ const STATUS_BADGE: Record<string, string> = {
   'For Onboarding':       components.badge.onboarding,
 }
 
-// ⬅️ ADDED — small chevron icon used on the collapsible group header.
-// Rotates via CSS transition when expanded/collapsed.
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg
@@ -66,10 +56,18 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
   )
 }
 
+function SearchIcon() {
+  return (
+    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8fa3b0] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+    </svg>
+  )
+}
+
 export default function ApplicantsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('All')
   const [jobFilter, setJobFilter] = useState<string>('All Job Postings')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState('') // ✅ FIX: single source of truth for search
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
@@ -82,29 +80,21 @@ export default function ApplicantsPage() {
     })
   }
 
-  // Unique job titles, for the dropdown filter
   const jobTitles = useMemo(
     () => Array.from(new Set(MOCK_APPLICANTS.map((a) => a.job))),
     []
   )
 
-  // ⬅️ CHANGED — active-only applicants (excludes rejected). This is the
-  // pool used for "All" and every pipeline-stage tab/count.
   const activeApplicants = useMemo(
     () => MOCK_APPLICANTS.filter((a) => a.status === 'active'),
     []
   )
 
-  // ⬅️ CHANGED — rejected-only applicants. Separate pool, only shown
-  // when the "Rejected" tab is active.
   const rejectedApplicants = useMemo(
     () => MOCK_APPLICANTS.filter((a) => a.status === 'rejected'),
     []
   )
 
-  // Tab counts — "All" and stage tabs count active applicants only;
-  // "Rejected" counts the rejected pool. Based on full dataset (not the
-  // currently filtered list) so numbers stay stable while filtering/searching.
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { All: activeApplicants.length }
     for (const tab of TABS.slice(1, -1)) {
@@ -114,28 +104,20 @@ export default function ApplicantsPage() {
     return counts
   }, [activeApplicants, rejectedApplicants])
 
-  // Apply tab + job dropdown + search (case-insensitive, matches name or job)
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
 
-    // ⬅️ CHANGED — pick the base pool depending on the active tab:
-    // "Rejected" pulls from rejectedApplicants; everything else pulls
-    // from activeApplicants only, so rejected applicants never leak
-    // into "All" or any pipeline-stage tab.
     const basePool = activeTab === 'Rejected' ? rejectedApplicants : activeApplicants
 
     return basePool.filter((a) => {
       const matchesStage = activeTab === 'All' || activeTab === 'Rejected' || a.stage === activeTab
       const matchesJob = jobFilter === 'All Job Postings' || a.job === jobFilter
-      const matchesSearch =
-        q === '' ||
-        a.name.toLowerCase().includes(q) ||
-        a.job.toLowerCase().includes(q)
+      // ✅ FIX: search na lang sa name, hindi na kasama yung job title
+      const matchesSearch = q === '' || a.name.toLowerCase().includes(q)
       return matchesStage && matchesJob && matchesSearch
     })
   }, [activeTab, jobFilter, search, activeApplicants, rejectedApplicants])
 
-  // Group filtered results by job title, in first-seen order
   const grouped = useMemo(() => {
     const groups: { job: string; applicants: typeof filtered }[] = []
     for (const applicant of filtered) {
@@ -146,7 +128,7 @@ export default function ApplicantsPage() {
       }
       group.applicants.push(applicant)
     }
-    return groups
+    return groups.sort((a, b) => a.job.localeCompare(b.job))
   }, [filtered])
 
   const isRejectedView = activeTab === 'Rejected'
@@ -158,9 +140,6 @@ export default function ApplicantsPage() {
       {/* ── Tabs: pipeline stages + Rejected ── */}
       <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-1">
       {TABS.map((tab) => {
-          // ⬅️ ADDED — visually separate "Rejected" from the pipeline tabs
-          // with a small left margin + divider, since it's a different
-          // kind of filter (status, not stage).
           const isRejectedTab = tab === 'Rejected'
           const isActive = activeTab === tab
 
@@ -173,10 +152,10 @@ export default function ApplicantsPage() {
                   ? `px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                       isRejectedTab ? 'bg-[#e05252] text-white' : 'bg-[#00bbda] text-white'
                     } ${isRejectedTab ? 'ml-3' : ''}`
-                  : `px-4 py-2 rounded-full text-sm font-medium bg-[#f4f7f9] dark:bg-[#132435] text-[#1a2a35] dark:text-[#e2edf3] border border-[#e2e8ed] dark:border-[#1e3448] whitespace-nowrap transition-colors ${
+                  : `px-4 py-2 rounded-full text-sm font-medium bg-[#f4f7f9] dark:bg-[#132435] border border-[#e2e8ed] dark:border-[#1e3448] whitespace-nowrap transition-colors ${
                       isRejectedTab
-                        ? 'ml-3 hover:border-[#e05252] hover:text-[#e05252]'
-                        : 'hover:border-[#00bbda] hover:text-[#00bbda]'
+                        ? 'ml-3 text-[#e05252] hover:border-[#e05252]'
+                        : 'text-[#1a2a35] dark:text-[#e2edf3] hover:border-[#00bbda] hover:text-[#00bbda]'
                     }`
               }
             >
@@ -199,17 +178,19 @@ export default function ApplicantsPage() {
           ))}
         </select>
 
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name or job posting..."
-          className="text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded px-3 py-2 bg-white dark:bg-[#132435] text-[#1a2a35] dark:text-[#e2edf3] w-full sm:w-72 placeholder:text-[#8fa3b0]"
-        />
+        {/* ✅ flex-1 para kunin niya yung natitirang space — mahaba ulit tulad ng dati */}
+        <div className="relative flex-1">
+          <SearchIcon />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or job posting..."
+            className={`${components.searchInput} pl-9 w-full`}
+          />
+        </div>
       </div>
 
-      {/* ⬅️ ADDED — small context banner when viewing the Rejected tab,
-          so it's clear this is a separate, read-only-ish record list. */}
       {isRejectedView && (
         <p className="text-xs text-[#8fa3b0] dark:text-[#6b8fa3] mt-3">
           Showing rejected applicants only. These are excluded from &quot;All&quot; and the pipeline stage tabs.
@@ -228,27 +209,21 @@ export default function ApplicantsPage() {
           </div>
         ) : (
           grouped.map((group) => {
-            const isCollapsible = group.applicants.length > 1
-            const isCollapsed = isCollapsible && collapsedGroups.has(group.job)
+            // ✅ FIX: lahat ng group collapsible na, kahit 1 lang applicant
+            const isCollapsed = collapsedGroups.has(group.job)
 
             return (
               <section key={group.job}>
-                {isCollapsible ? (
-                  <button
-                    onClick={() => toggleGroup(group.job)}
-                    className="flex items-center gap-2 mb-2 group/header"
-                    aria-expanded={!isCollapsed}
-                  >
-                    <ChevronIcon expanded={!isCollapsed} />
-                    <h2 className="text-sm font-semibold text-[#0f1f29] dark:text-[#e2edf3] group-hover/header:text-[#00bbda] transition-colors">
-                      {group.job} ({group.applicants.length})
-                    </h2>
-                  </button>
-                ) : (
-                  <h2 className="text-sm font-semibold text-[#0f1f29] dark:text-[#e2edf3] mb-2 pl-6">
+                <button
+                  onClick={() => toggleGroup(group.job)}
+                  className="flex items-center gap-2 mb-2 group/header"
+                  aria-expanded={!isCollapsed}
+                >
+                  <ChevronIcon expanded={!isCollapsed} />
+                  <h2 className="text-sm font-semibold text-[#0f1f29] dark:text-[#e2edf3] group-hover/header:text-[#00bbda] transition-colors">
                     {group.job} ({group.applicants.length})
                   </h2>
-                )}
+                </button>
 
                 {!isCollapsed && (
                   <div className="border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg overflow-hidden">
@@ -265,7 +240,6 @@ export default function ApplicantsPage() {
                             <th className={components.tableHeaderCell}>Name</th>
                             <th className={components.tableHeaderCell}>Date Applied</th>
                             <th className={components.tableHeaderCell}>
-                              {/* ⬅️ CHANGED — label reflects context: last active stage vs. date moved */}
                               {isRejectedView ? 'Rejected At Stage' : 'Date Moved to Stage'}
                             </th>
                             <th className={components.tableHeaderCell}>Status</th>
@@ -278,13 +252,9 @@ export default function ApplicantsPage() {
                             <td className={`${components.tableCell} truncate`}>{a.name}</td>
                             <td className={components.tableCellMuted}>{a.dateApplied}</td>
                             <td className={components.tableCellMuted}>
-                              {/* ⬅️ CHANGED — rejected view shows the stage name instead of a date,
-                                  since that's the more useful info here (where they got rejected) */}
                               {isRejectedView ? a.stage : a.dateMoved}
                             </td>
                             <td className={components.tableCell}>
-                                {/* ⬅️ CHANGED — rejected rows always show the red "Rejected" badge,
-                                    regardless of what stage they were on */}
                                 <span className={`${components.badge.base} ${isRejectedView ? components.badge.rejected : (STATUS_BADGE[a.stage] ?? components.badge.initial)}`}>
                                 {isRejectedView ? 'Rejected' : a.stage}
                                 </span>

@@ -1524,11 +1524,11 @@ export default function ApplicantProfilePage() {
                 <dd className="text-[#1a2a35] dark:text-[#e2edf3]">{applicant.dateApplied}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-[#8fa3b0] dark:text-[#6b8fa3]">Last Moved</dt>
+                <dt className="text-[#8fa3b0] dark:text-[#6b8fa3]">Last Stage Moved</dt>
                 <dd className="text-[#1a2a35] dark:text-[#e2edf3]">{applicant.dateMoved}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-[#8fa3b0] dark:text-[#6b8fa3]">Job Posting</dt>
+                <dt className="text-[#8fa3b0] dark:text-[#6b8fa3]">Applied Position</dt>
                 <dd className="text-[#1a2a35] dark:text-[#e2edf3] text-right">{applicant.job}</dd>
               </div>
             </dl>
