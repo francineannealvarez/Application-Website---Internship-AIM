@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { components } from '@/lib/admin-theme'
 
 // TODO: replace with real accounts data from Supabase (users/profiles table).
@@ -21,7 +21,7 @@ const MOCK_ACCOUNTS: Account[] = [
 
 export default function UserManagementSection() {
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS)
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   function toggleAccess(id: number) {
     setAccounts((prev) =>
@@ -43,77 +43,12 @@ export default function UserManagementSection() {
           </p>
         </div>
         <button
-          onClick={() => setShowAddForm((v) => !v)}
+          onClick={() => setShowAddModal(true)}
           className="px-4 py-2 text-sm font-medium rounded bg-[#00bbda] text-white hover:bg-[#00a5c0] transition-colors"
         >
           + Add HR Account
         </button>
       </div>
-
-      {showAddForm && (
-        <div className="bg-white dark:bg-[#132435] border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-[#0f1f29] dark:text-[#e2edf3] mb-4">
-            New HR Account
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
-                Full Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Juan Dela Cruz"
-                className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="name@arvin.com"
-                className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
-                Contact Number
-              </label>
-              <input
-                type="text"
-                placeholder="0917 000 0000"
-                className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
-                Role
-              </label>
-              <select className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3]">
-                <option>HR Staff</option>
-                <option>HR Director</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 mt-5">
-            <button className="px-4 py-2 text-sm font-medium rounded bg-[#00bbda] text-white hover:bg-[#00a5c0] transition-colors">
-              Create Account
-            </button>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 text-sm font-medium rounded border border-[#e2e8ed] dark:border-[#1e3448] text-[#1a2a35] dark:text-[#e2edf3] hover:border-[#00bbda] hover:text-[#00bbda] transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-
-          <p className="text-xs text-[#8fa3b0] dark:text-[#6b8fa3] mt-3">
-            Note: account creation is finalized via Supabase — this form will be wired up during backend integration.
-          </p>
-        </div>
-      )}
 
       <div className="border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg overflow-hidden">
         <table className={components.table}>
@@ -155,6 +90,121 @@ export default function UserManagementSection() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <AddHrAccountModal open={showAddModal} onClose={() => setShowAddModal(false)} />
+    </div>
+  )
+}
+
+// ─── Add HR Account Modal ──────────────────────────────────────
+function AddHrAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // Mounted separately from `open` so we can play the closing transition
+  // before actually removing it from the DOM.
+  const [mounted, setMounted] = useState(open)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true)
+      // next tick, so the enter transition actually plays instead of snapping in
+      requestAnimationFrame(() => setVisible(true))
+    } else {
+      setVisible(false)
+      const timeout = setTimeout(() => setMounted(false), 200)
+      return () => clearTimeout(timeout)
+    }
+  }, [open])
+
+  if (!mounted) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop — blurred + dimmed, not a flat opaque overlay */}
+      <div
+        onClick={onClose}
+        className={`absolute inset-0 bg-[#0f1f29]/40 backdrop-blur-sm transition-opacity duration-200 ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+
+      {/* Modal card */}
+      <div
+        className={`relative w-full max-w-lg bg-white dark:bg-[#132435] rounded-2xl shadow-xl overflow-hidden transition-all duration-200 ${
+          visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+        }`}
+      >
+        {/* Soft pale-primary header strip instead of flat white top */}
+        <div className="px-6 py-5 bg-[#e6f9fc] dark:bg-[#0d2b38] border-b border-[#d3f1f6] dark:border-[#1e3448]">
+          <h3 className="text-base font-semibold text-[#0f1f29] dark:text-[#e2edf3]">
+            New HR Account
+          </h3>
+          <p className="text-xs text-[#5a7a85] dark:text-[#6b8fa3] mt-0.5">
+            Grant a new team member access to this system.
+          </p>
+        </div>
+
+        <div className="px-6 py-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Juan Dela Cruz"
+                className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3] focus:outline-none focus:ring-2 focus:ring-[#00bbda]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                placeholder="name@arvin.com"
+                className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3] focus:outline-none focus:ring-2 focus:ring-[#00bbda]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
+                Contact Number
+              </label>
+              <input
+                type="text"
+                placeholder="0917 000 0000"
+                className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3] focus:outline-none focus:ring-2 focus:ring-[#00bbda]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#1a2a35] dark:text-[#e2edf3] mb-1">
+                Role
+              </label>
+              <select className="w-full text-sm border border-[#e2e8ed] dark:border-[#1e3448] rounded-lg px-3 py-2 bg-white dark:bg-[#0f1f29] text-[#1a2a35] dark:text-[#e2edf3] focus:outline-none focus:ring-2 focus:ring-[#00bbda]">
+                <option>HR Director</option>
+                <option>HR Associate</option>
+                <option>HR Specialist</option>
+                <option>HR Supervisor</option>
+              </select>
+            </div>
+          </div>
+
+          <p className="text-xs text-[#8fa3b0] dark:text-[#6b8fa3] mt-4">
+            Note: account creation is finalized via Supabase — this form will be wired up during backend integration.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 px-6 py-4 bg-[#f9fbfc] dark:bg-[#0f1f29] border-t border-[#e2e8ed] dark:border-[#1e3448]">
+          <button className="px-4 py-2 text-sm font-medium rounded-lg bg-[#00bbda] text-white hover:bg-[#00a5c0] transition-colors">
+            Create Account
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-[#e2e8ed] dark:border-[#1e3448] text-[#1a2a35] dark:text-[#e2edf3] hover:border-[#00bbda] hover:text-[#00bbda] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -10,8 +10,15 @@ import AppearanceSection from '@/components/admin/settings/AppearanceSection'
 import AboutSection from '@/components/admin/settings/AboutSection'
 
 // TODO: replace with real auth/role check once NextAuth + Supabase roles are wired up.
-// For now this is a dev-only toggle so we can preview both access levels in the UI.
-type MockRole = 'hr_director' | 'hr_staff'
+// For now this is a dev-only toggle so we can preview all access levels in the UI.
+type MockRole = 'hr_director' | 'hr_supervisor' | 'hr_specialist' | 'hr_associate'
+
+const ROLE_LABELS: Record<MockRole, string> = {
+  hr_director: 'HR Director',
+  hr_supervisor: 'HR Supervisor',
+  hr_specialist: 'HR Specialist',
+  hr_associate: 'HR Associate',
+}
 
 const TABS = ['Account', 'User Management', 'Notifications', 'Appearance', 'About'] as const
 type Tab = typeof TABS[number]
@@ -38,8 +45,11 @@ export default function SettingsPage() {
           onChange={(e) => setMockRole(e.target.value as MockRole)}
           className="text-xs border border-[#e2e8ed] dark:border-[#1e3448] rounded px-2 py-1 bg-white dark:bg-[#132435] text-[#1a2a35] dark:text-[#e2edf3]"
         >
-          <option value="hr_director">HR Director</option>
-          <option value="hr_staff">HR Staff</option>
+          {(Object.keys(ROLE_LABELS) as MockRole[]).map((role) => (
+            <option key={role} value={role}>
+              {ROLE_LABELS[role]}
+            </option>
+          ))}
         </select>
       </div>
 
