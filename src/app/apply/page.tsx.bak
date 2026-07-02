@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Inter } from "next/font/google";
-import { writeDemoUser } from "@/lib/demo-session";
 import {
   Upload, FileText, X, ChevronDown, CheckCircle2, Shield, Phone,
   Briefcase, Building2, ArrowRight,
@@ -87,7 +86,6 @@ export default function ApplyPage() {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    writeDemoUser({ id: "2", name: form.fullName, email: form.email, role: "APPLICANT" });
     setSubmitted(true);
   };
 

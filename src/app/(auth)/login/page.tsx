@@ -4,8 +4,13 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { mockUsers } from '@/lib/mockData';
-import { clearDemoUser, writeDemoUser } from '@/lib/demo-session';
+import { clearDemoUser } from '@/lib/demo-session';
+
+const NAVY = '#0B2A4A';
+const CYAN = '#12B6D6';
+const MUTED = '#6B7A8D';
+const BORDER = '#E5E9EC';
+const BG_LIGHT = '#F7F9FA';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,21 +18,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  const handleDemoLogin = (userType: 'hr' | 'applicant') => {
-    const user = userType === 'hr' ? mockUsers.hrAdmin : mockUsers.applicant1;
-    writeDemoUser(user);
-    if (userType === 'hr') {
-      router.push('/hr/dashboard');
-      return;
-    }
-
-    // TODO: In production, check whether this applicant already has a submitted application.
-    // If no application exists, route to /applicant (form first).
-    // If an application already exists, route directly to the dashboard and skip the form.
-    // This demo flow always routes to the form because persistent application state does not exist yet.
-    router.push('/applicant');
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +38,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect to dashboard
       router.push('/dashboard');
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -57,33 +46,45 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#00AEEF] to-[#1B3A5C] flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: BG_LIGHT }}>
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            ARVIN INTERNATIONAL
+          <div className="w-16 h-16 rounded-2xl bg-white shadow-lg mx-auto mb-4 flex items-center justify-center overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
+            <img
+              src="/logo.png"
+              alt="Arvin International"
+              className="w-full h-full object-contain p-2"
+              onError={(e) => {
+                const t = e.currentTarget;
+                t.style.display = 'none';
+                t.parentElement!.innerHTML = `<svg width="32" height="32" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="${NAVY}" stroke-width="2.5" fill="none"/><path d="M20 9 L25 23 H15 Z" fill="${NAVY}"/><path d="M13 28 Q20 23 27 28" stroke="${NAVY}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+              }}
+            />
+          </div>
+          <h1 className="text-2xl font-bold" style={{ color: NAVY }}>
+            Arvin International Marketing Inc.
           </h1>
-          <p className="text-white/80 text-sm italic">
+          <p className="text-sm mt-1" style={{ color: CYAN }}>
             Moving Ahead to Serve You Better
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-[#1B3A5C] mb-6 text-center">
-            Login
+        <div className="bg-white rounded-2xl p-8" style={{ border: `1px solid ${BORDER}`, boxShadow: '0 12px 32px rgba(11,42,74,0.08)' }}>
+          <h2 className="text-xl font-bold mb-6 text-center" style={{ color: NAVY }}>
+            Log In to Your Account
           </h2>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+            <div className="mb-4 p-3.5 rounded-xl text-sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>
                 Email Address
               </label>
               <input
@@ -91,13 +92,16 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
-                placeholder="Enter your email"
+                placeholder="you@email.com"
+                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all rounded-lg"
+                style={{ border: `1px solid ${BORDER}`, backgroundColor: BG_LIGHT, color: NAVY }}
+                onFocus={(e) => (e.target.style.borderColor = CYAN)}
+                onBlur={(e) => (e.target.style.borderColor = BORDER)}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>
                 Password
               </label>
               <input
@@ -105,52 +109,30 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
-                placeholder="Enter your password"
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all rounded-lg"
+                style={{ border: `1px solid ${BORDER}`, backgroundColor: BG_LIGHT, color: NAVY }}
+                onFocus={(e) => (e.target.style.borderColor = CYAN)}
+                onBlur={(e) => (e.target.style.borderColor = BORDER)}
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#00AEEF] text-white font-semibold py-2 rounded-lg hover:bg-[#0099CC] transition disabled:opacity-50"
+              className="w-full py-3 text-sm font-semibold text-white rounded-lg hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-50 mt-1"
+              style={{ backgroundColor: NAVY }}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Logging in...' : 'Log In'}
             </button>
           </form>
 
-          <p className="text-center text-gray-600 text-sm mt-6">
+          <p className="text-center text-sm mt-6" style={{ color: MUTED }}>
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-[#00AEEF] font-semibold hover:underline">
+            <Link href="/register" className="font-semibold underline" style={{ color: CYAN }}>
               Register here
             </Link>
           </p>
-
-          {/* Demo Mode Buttons */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-xs text-gray-600 font-medium mb-3">🚀 Demo Mode - Quick Login:</p>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('applicant')}
-                className="w-full px-3 py-2 bg-[#00AEEF] text-white text-xs font-medium rounded hover:bg-[#0099CC] transition"
-              >
-                👤 Login as Applicant (Demo)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('hr')}
-                className="w-full px-3 py-2 bg-[#1B3A5C] text-white text-xs font-medium rounded hover:bg-[#0f2847] transition"
-              >
-                👨‍💼 Login as HR Admin (Demo)
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-3">Or use test credentials below:</p>
-            <div className="text-xs text-gray-700 space-y-1 mt-2">
-              <p><strong>HR Admin:</strong> hr@arvininternational.com / admin123</p>
-              <p><strong>Applicant:</strong> applicant@test.com / test123</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -103,7 +103,7 @@ export default function HRDashboard() {
 
   const handleLogout = () => {
     clearDemoUser();
-    void signOut({ callbackUrl: '/' });
+    void signOut({ callbackUrl: '/login' });
   };
 
   return (
