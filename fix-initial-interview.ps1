@@ -1,3 +1,12 @@
+# ============================================
+# FIX: Initial Interview step now shows Wait-for-HR-text/Viber message
+# instead of a fixed date/venue (PDS, Assessment, Requirements untouched)
+# ============================================
+
+$dashboardPath = "src\app\dashboard\page.tsx"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+$dashboardContent = @'
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -6,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   FileText, Clock, Sparkles, CheckCircle2,
-  MessageSquare, PenLine, Users, ClipboardCheck, ClipboardList,
+  MessageSquare, PenLine, Users, ClipboardCheck,
   Calendar, MapPin, Link2, AlertCircle,
   ChevronDown, Shield, CreditCard, Hash,
   LogOut, Building2, User, Check,
@@ -14,6 +23,8 @@ import {
 
 import { getUserApplication } from '@/lib/mockData';
 import { clearDemoUser, readDemoUser, type DemoUser } from '@/lib/demo-session';
+import PersonalDataSheetContent from '@/components/dashboard/PersonalDataSheetContent';
+import AssessmentContent from '@/components/dashboard/AssessmentContent';
 
 function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
@@ -118,15 +129,16 @@ function ApplicationStatusCard({ stage, onContinue, setApplicationStage }: { sta
 
 const HIRING_STEPS = [
   { label: 'Initial Interview', sublabel: 'HR Screening', Icon: MessageSquare },
+  { label: 'Personal Data Sheet', sublabel: 'Complete your PDS', Icon: FileText },
   { label: 'Assessment', sublabel: 'Aptitude & Personality', Icon: PenLine },
   { label: 'Department Interview', sublabel: 'With Department Head', Icon: Users },
   { label: 'Requirements', sublabel: 'Document Submission', Icon: ClipboardCheck },
 ] as const;
 
 const STEP_DETAILS = [
-  { date: 'July 15, 2025', time: '10:00 AM', venue: 'Arvin HQ — 5th Floor, BGC Taguig', platform: null, instructions: 'Please bring at least one valid government-issued ID. Arrive 15 minutes before your scheduled time. Business casual attire is strongly recommended.' },
+  { date: null, time: null, venue: null, platform: null, instructions: 'Please wait for a text message from HR regarding your Initial Interview schedule. Make sure your Viber is ready and reachable, as HR will call you there.' },
   { date: 'July 22, 2025', time: '9:00 AM', venue: null, platform: 'https://assess.arvin.ph/session/2025-07', instructions: 'The assessment is conducted online. Ensure a stable internet connection and a distraction-free environment. You will receive your unique access link 24 hours before the test.' },
-  { date: 'July 29, 2025', time: '2:00 PM', venue: 'Arvin HQ — Department Office, 6th Floor', platform: null, instructions: 'This is a technical interview with your prospective department head. Review your application thoroughly and be prepared to discuss your relevant experience in detail.' },
+  { date: 'July 29, 2025', time: '2:00 PM', venue: 'Arvin International Marketing Inc. — 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City', platform: null, instructions: 'This is a technical interview with your prospective department head. Review your application thoroughly and be prepared to discuss your relevant experience in detail.' },
 ];
 
 const DOCUMENTS = [
@@ -142,15 +154,17 @@ function StepDetailContent({ stepIdx, isCurrent }: { stepIdx: number; isCurrent:
   if (!detail) return null;
   return (
     <div className="space-y-3 pt-3">
-      <div className="flex items-center gap-2.5 text-sm text-[#0B2A4A]">
-        <Calendar className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
-        <span><span className="font-semibold">{detail.date}</span><span style={{ color: '#6B7A8D' }}> at {detail.time}</span></span>
-      </div>
+      {detail.date && (
+        <div className="flex items-center gap-2.5 text-sm text-[#0B2A4A]">
+          <Calendar className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+          <span><span className="font-semibold">{detail.date}</span><span style={{ color: '#6B7A8D' }}> at {detail.time}</span></span>
+        </div>
+      )}
       {detail.venue ? (
         <div className="flex items-start gap-2.5 text-sm text-[#0B2A4A]"><MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><span>{detail.venue}</span></div>
-      ) : (
-        <div className="flex items-center gap-2.5 text-sm"><Link2 className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} /><a href={detail.platform!} target="_blank" rel="noreferrer" className="hover:underline truncate" style={{ color: '#12B6D6' }}>{detail.platform}</a></div>
-      )}
+      ) : detail.platform ? (
+        <div className="flex items-center gap-2.5 text-sm"><Link2 className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} /><a href={detail.platform} target="_blank" rel="noreferrer" className="hover:underline truncate" style={{ color: '#12B6D6' }}>{detail.platform}</a></div>
+      ) : null}
       <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-xl p-3.5 text-sm text-amber-800">
         <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /><span>{detail.instructions}</span>
       </div>
@@ -196,7 +210,8 @@ function RequirementsContent({ docStatuses, isCurrent }: { docStatuses: DocStatu
 }
 
 function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }: { completedSteps: number; docStatuses: DocStatus[]; onSimulateHrComplete: () => void; }) {
-  const [expandedStep, setExpandedStep] = useState<number | null>(completedSteps < 4 ? completedSteps : null);
+  const totalSteps = HIRING_STEPS.length;
+  const [expandedStep, setExpandedStep] = useState<number | null>(completedSteps < totalSteps ? completedSteps : null);
   const handleRowClick = (idx: number) => { if (idx > completedSteps) return; setExpandedStep(prev => prev === idx ? null : idx); };
   const circleState = (idx: number): 'completed' | 'active' | 'locked' => { if (idx < completedSteps) return 'completed'; if (idx === completedSteps) return 'active'; return 'locked'; };
   return (
@@ -205,11 +220,11 @@ function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }
       <div className="px-6 py-4 border-b border-[#E5E9EC] flex items-center justify-between gap-2 flex-wrap">
         <div><h3 className="font-bold text-[#0B2A4A] tracking-widest text-sm">HIRING PROCESS</h3><p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Click on each stage to view details</p></div>
         <div className="flex items-center gap-2 shrink-0">
-          {completedSteps < 4 && <button onClick={onSimulateHrComplete} className="text-xs px-3 py-1.5 rounded-lg border border-dashed text-[#9BAAB8] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium" style={{ borderColor: '#D1DAE3' }}>Simulate HR Update &rarr;</button>}
+          {completedSteps < totalSteps && <button onClick={onSimulateHrComplete} className="text-xs px-3 py-1.5 rounded-lg border border-dashed text-[#9BAAB8] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium" style={{ borderColor: '#D1DAE3' }}>Simulate HR Update &rarr;</button>}
           <span className="text-xs font-bold px-3 py-1 text-white rounded-full shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Active</span>
         </div>
       </div>
-      <div className="flex items-center px-6 sm:px-10 pt-6 pb-4 max-w-2xl mx-auto">
+      <div className="flex items-center px-6 sm:px-10 pt-6 pb-4 max-w-3xl mx-auto">
         {HIRING_STEPS.map(({ Icon }, idx) => {
           const state = circleState(idx);
           return (
@@ -225,7 +240,7 @@ function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }
                 </div>
                 <span className="text-[10px] font-semibold text-center leading-tight max-w-[64px]" style={{ color: state === 'completed' ? '#12B6D6' : state === 'active' ? '#0B2A4A' : '#D1DAE3' }}>{HIRING_STEPS[idx].label}</span>
               </div>
-              {idx < 3 && <div className="flex-1 h-0.5 mx-2 mb-5 rounded-full transition-colors duration-500" style={{ backgroundColor: idx < completedSteps ? '#12B6D6' : '#E5E9EC' }} />}
+              {idx < totalSteps - 1 && <div className="flex-1 h-0.5 mx-2 mb-5 rounded-full transition-colors duration-500" style={{ backgroundColor: idx < completedSteps ? '#12B6D6' : '#E5E9EC' }} />}
             </React.Fragment>
           );
         })}
@@ -233,7 +248,7 @@ function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }
       <div className="px-4 sm:px-6 pb-5 space-y-2">
         {HIRING_STEPS.map((step, idx) => {
           const isCompleted = idx < completedSteps;
-          const isCurrent = idx === completedSteps && completedSteps < 4;
+          const isCurrent = idx === completedSteps && completedSteps < totalSteps;
           const isLocked = idx > completedSteps;
           const isExpanded = expandedStep === idx;
           return (
@@ -251,7 +266,15 @@ function HiringProcessCard({ completedSteps, docStatuses, onSimulateHrComplete }
               </button>
               {isExpanded && !isLocked && (
                 <div className="px-4 pb-4 border-t border-[#E5E9EC]/80 animate-fade-slide-up">
-                  {idx === 3 ? <RequirementsContent docStatuses={docStatuses} isCurrent={isCurrent} /> : <StepDetailContent stepIdx={idx} isCurrent={isCurrent} />}
+                  {idx === 1 ? (
+                    <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={() => {}} />
+                  ) : idx === 2 ? (
+                    <AssessmentContent isCurrent={isCurrent} onSubmit={() => {}} />
+                  ) : idx === 4 ? (
+                    <RequirementsContent docStatuses={docStatuses} isCurrent={isCurrent} />
+                  ) : (
+                    <StepDetailContent stepIdx={idx > 1 ? idx - 1 : idx} isCurrent={isCurrent} />
+                  )}
                 </div>
               )}
             </div>
@@ -268,7 +291,7 @@ function ProceedModal({ open, onCancel, onConfirm }: { open: boolean; onCancel: 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(11,42,74,0.6)', backdropFilter: 'blur(6px)' }}>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 animate-scale-in">
         <h2 className="text-lg font-bold text-[#0B2A4A] mb-2 text-center">Proceed with your application?</h2>
-        <p className="text-sm mb-6 leading-relaxed text-justify" style={{ color: '#6B7A8D' }}>Do you want to proceed with your application to the next stage? You will move on to the <strong className="text-[#0B2A4A]">Initial Interview</strong>, <strong className="text-[#0B2A4A]">Assessment</strong>, <strong className="text-[#0B2A4A]">Department Interview</strong>, and <strong className="text-[#0B2A4A]">Requirements</strong> submission.</p>
+        <p className="text-sm mb-6 leading-relaxed text-justify" style={{ color: '#6B7A8D' }}>Do you want to proceed with your application to the next stage? You will move on to the <strong className="text-[#0B2A4A]">Initial Interview</strong>, <strong className="text-[#0B2A4A]">Personal Data Sheet</strong>, <strong className="text-[#0B2A4A]">Assessment</strong>, <strong className="text-[#0B2A4A]">Department Interview</strong>, and <strong className="text-[#0B2A4A]">Requirements</strong> submission.</p>
         <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 py-2.5 border text-[#0B2A4A] font-semibold rounded-lg hover:bg-[#F7F9FA] transition-colors text-sm" style={{ borderColor: '#E5E9EC' }}>Cancel</button>
           <button onClick={onConfirm} className="flex-1 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 transition-all text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Yes, Continue</button>
@@ -322,8 +345,8 @@ export default function ApplicantDashboard() {
 
   const handleSimulateHrComplete = () => {
     setHiringCompletedSteps(prev => {
-      const next = Math.min(prev + 1, 4);
-      if (next === 4) {
+      const next = Math.min(prev + 1, HIRING_STEPS.length);
+      if (next === HIRING_STEPS.length) {
         setDocStatuses(['Submitted', 'Submitted', 'Submitted', 'Submitted', 'Submitted']);
         setCongratsOpen(true);
       }
@@ -385,3 +408,11 @@ export default function ApplicantDashboard() {
     </div>
   );
 }
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $dashboardPath), $dashboardContent, $utf8NoBom)
+Write-Host "Updated: $dashboardPath" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Done! Ang Initial Interview step ay nagpapakita na ng: maghintay ng text mula sa HR, ready sa Viber." -ForegroundColor Cyan
+Write-Host "Hindi ginalaw ang Personal Data Sheet, Assessment, at Requirements steps." -ForegroundColor Cyan

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   FileText, Clock, Sparkles, CheckCircle2,
-  MessageSquare, PenLine, Users, ClipboardCheck, ClipboardList,
+  MessageSquare, PenLine, Users, ClipboardCheck,
   Calendar, MapPin, Link2, AlertCircle,
   ChevronDown, Shield, CreditCard, Hash,
   LogOut, Building2, User, Check,

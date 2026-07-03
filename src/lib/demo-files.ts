@@ -1,0 +1,26 @@
+// In-memory store for the actual File objects selected in the Application Form.
+// This is demo-only: it lives in the browser's JS memory (not persisted to
+// sessionStorage, since File/Blob objects can't be serialized to JSON). It
+// survives client-side navigation (Link/router.push) but resets on a full
+// page refresh, since that reloads the JS runtime.
+
+let resumeFile: File | null = null;
+let coverLetterFile: File | null = null;
+
+export function setDemoFiles(resume: File | null, coverLetter: File | null) {
+  resumeFile = resume;
+  coverLetterFile = coverLetter;
+}
+
+export function getDemoResumeFile(): File | null {
+  return resumeFile;
+}
+
+export function getDemoCoverLetterFile(): File | null {
+  return coverLetterFile;
+}
+
+export function clearDemoFiles() {
+  resumeFile = null;
+  coverLetterFile = null;
+}

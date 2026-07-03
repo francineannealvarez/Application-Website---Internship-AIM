@@ -2,16 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { writeDemoUser, readDemoApplication } from '@/lib/demo-session';
 import {
   Trophy, MapPin, TrendingUp, ShieldCheck, Users, Banknote,
   UserPlus, ClipboardList, Upload, Send, Eye, Unlock,
   ChevronRight, Menu, X, Briefcase, Clock, Building2,
-  CheckCircle2, ArrowRight, LogIn, Search,
+  CheckCircle2, ArrowRight, LogIn, UserCheck, Search,
 } from 'lucide-react';
 
-/* ─── DATA ──────────────────────────────────────────────────────────────── */
+/* ─── DATA ─────────────────────────────────────────────────────────────────── */
 
 const NAV_LINKS = ['Home', 'Open Positions', 'How to Apply', 'Contact'];
 
@@ -203,7 +201,9 @@ const HOW_STEPS = [
   { icon: Unlock, title: 'Complete Requirements', desc: 'If shortlisted, your portal unlocks next steps and required documents.' },
 ];
 
-/* ─── HELPERS ───────────────────────────────────────────────────────────── */
+const STATUS_STEPS = ['Submitted', 'Under Review', 'Result'];
+
+/* ─── HELPERS ───────────────────────────────────────────────────────────────── */
 
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
@@ -252,13 +252,21 @@ function FadeSection({
   );
 }
 
-/* ─── AUTH MODAL (no backend yet — logs to console only) ───────────────── */
+/* ─── AUTH MODAL (no backend yet — logs to console only) ────────────────────── */
 
-function AuthModal({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
-  const [fullName, setFullName] = useState('');
+function AuthModal({
+  mode,
+  onClose,
+  onSwitch,
+}: {
+  mode: 'login' | 'register';
+  onClose: () => void;
+  onSwitch: () => void;
+}) {
+  const isLogin = mode === 'login';
   const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -274,24 +282,9 @@ function AuthModal({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    const application = readDemoApplication();
-    if (!application) {
-      setError("We couldn't find an application under that name and email. Please apply first.");
-      return;
-    }
-
-    const emailMatches = application.email.trim().toLowerCase() === email.trim().toLowerCase();
-    const nameMatches = application.fullName.trim().toLowerCase() === fullName.trim().toLowerCase();
-    if (!emailMatches || !nameMatches) {
-      setError('Please enter the same name and email address you used when you applied.');
-      return;
-    }
-
-    writeDemoUser({ id: '2', name: application.fullName, email: application.email, role: 'APPLICANT' });
+    // TODO: connect authentication here later (next-auth signIn / register API call).
+    console.log(isLogin ? 'Login attempt:' : 'Register attempt:', { fullName, email, password });
     onClose();
-    router.push('/dashboard');
   };
 
   return (
@@ -307,9 +300,13 @@ function AuthModal({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between px-7 pt-6 pb-4" style={{ borderBottom: '1px solid #E5E9EC' }}>
           <div className="flex items-center gap-2">
-            <LogIn size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+            {isLogin ? (
+              <LogIn size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+            ) : (
+              <UserCheck size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+            )}
             <h2 className="text-lg font-bold" style={{ color: '#0B2A4A' }}>
-              Log In to Your Account
+              {isLogin ? 'Log In to Your Account' : 'Create an Account'}
             </h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
@@ -318,24 +315,23 @@ function AuthModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <form className="px-7 py-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-          <p className="text-xs -mt-1" style={{ color: '#6B7A8D' }}>
-            Enter the same full name and email address you used on your application.
-          </p>
-          <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Juan dela Cruz"
-              className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
-              style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
-              onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
-              onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
-            />
-          </div>
+          {!isLogin && (
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Juan dela Cruz"
+                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+                style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
+                onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
+                onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
+              />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
               Email Address
@@ -351,21 +347,33 @@ function AuthModal({ onClose }: { onClose: () => void }) {
               onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
             />
           </div>
-          {error && (
-            <p className="text-xs" style={{ color: '#DC2626' }}>{error}</p>
-          )}
+          <div>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+              style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
+              onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
+              onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
+            />
+          </div>
           <button
             type="submit"
             className="w-full py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 mt-1"
             style={{ backgroundColor: '#0B2A4A', borderRadius: '8px' }}
           >
-            Log In
+            {isLogin ? 'Log In' : 'Create Account'}
           </button>
           <p className="text-center text-xs" style={{ color: '#9BAAB8' }}>
-            {"Don't have an application yet? "}
-            <Link href="/apply" onClick={onClose} className="font-semibold underline" style={{ color: '#12B6D6' }}>
-              Apply Now
-            </Link>
+            {isLogin ? "Don't have an account? " : 'Already have an account? '}
+            <button type="button" onClick={onSwitch} className="font-semibold underline" style={{ color: '#12B6D6' }}>
+              {isLogin ? 'Register' : 'Log In'}
+            </button>
           </p>
         </form>
       </div>
@@ -373,7 +381,7 @@ function AuthModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ─── JOB MODAL ─────────────────────────────────────────────────────────── */
+/* ─── JOB MODAL ─────────────────────────────────────────────────────────────── */
 
 function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
   useEffect(() => {
@@ -472,7 +480,7 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
   );
 }
 
-/* ─── ALL POSITIONS MODAL ──────────────────────────────────────────────── */
+/* ─── ALL POSITIONS MODAL ────────────────────────────────────────────────────── */
 
 function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelect: (job: Job) => void }) {
   const [search, setSearch] = useState('');
@@ -585,26 +593,18 @@ function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelec
   );
 }
 
-/* ─── MAIN LANDING PAGE ─────────────────────────────────────────────────── */
+/* ─── MAIN LANDING PAGE ──────────────────────────────────────────────────────── */
 
 export default function HomePage() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeStatus] = useState(1);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register' | null>(null);
   const [showAllJobs, setShowAllJobs] = useState(false);
   const positionsRef = useRef<HTMLElement>(null);
-  const howItWorksRef = useRef<HTMLElement>(null);
-  const contactRef = useRef<HTMLElement>(null);
 
   const scrollToPositions = () => {
     positionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const handleNavClick = (link: string) => {
-    if (link === 'Home') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
-    if (link === 'Open Positions') { scrollToPositions(); return; }
-    if (link === 'How to Apply') { howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-    if (link === 'Contact') { contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   };
 
   return (
@@ -648,7 +648,7 @@ export default function HomePage() {
             {NAV_LINKS.map((link) => (
               <button
                 key={link}
-                onClick={() => handleNavClick(link)}
+                onClick={link === 'Open Positions' ? scrollToPositions : undefined}
                 className="text-sm text-[#0B2A4A] font-medium relative group transition-colors bg-transparent border-none cursor-pointer"
               >
                 {link}
@@ -662,11 +662,20 @@ export default function HomePage() {
 
           <div className="hidden md:flex items-center gap-4">
             <button
-              onClick={() => setShowLoginModal(true)}
+              onClick={() => setAuthMode('login')}
+              className="text-sm font-medium transition-colors bg-transparent border-none cursor-pointer"
+              style={{ color: '#0B2A4A' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#12B6D6')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#0B2A4A')}
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => setAuthMode('register')}
               className="text-sm font-semibold text-white px-4 py-2 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: '#0B2A4A', borderRadius: '6px' }}
             >
-              Log In
+              Register
             </button>
           </div>
 
@@ -681,8 +690,10 @@ export default function HomePage() {
               <button
                 key={link}
                 onClick={() => {
-                  handleNavClick(link);
-                  setMobileOpen(false);
+                  if (link === 'Open Positions') {
+                    scrollToPositions();
+                    setMobileOpen(false);
+                  }
                 }}
                 className="text-sm font-medium text-[#0B2A4A] text-left bg-transparent border-none cursor-pointer"
               >
@@ -692,13 +703,22 @@ export default function HomePage() {
             <hr style={{ borderColor: '#E5E9EC' }} />
             <button
               onClick={() => {
-                setShowLoginModal(true);
+                setAuthMode('login');
+                setMobileOpen(false);
+              }}
+              className="text-sm font-medium text-[#0B2A4A] text-left bg-transparent border-none cursor-pointer"
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => {
+                setAuthMode('register');
                 setMobileOpen(false);
               }}
               className="text-sm font-semibold text-white px-4 py-2 w-full"
               style={{ backgroundColor: '#0B2A4A', borderRadius: '6px' }}
             >
-              Log In
+              Register
             </button>
           </div>
         )}
@@ -733,6 +753,13 @@ export default function HomePage() {
               >
                 Apply Now <ArrowRight size={15} />
               </Link>
+              <button
+                onClick={() => setAuthMode('register')}
+                className="px-6 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 transition-all w-full sm:w-auto hover:bg-[#0B2A4A] hover:text-white"
+                style={{ border: '1.5px solid #0B2A4A', color: '#0B2A4A', backgroundColor: 'transparent', borderRadius: '8px' }}
+              >
+                Create an Account
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-4 pt-2">
@@ -923,7 +950,7 @@ export default function HomePage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section ref={howItWorksRef} className="py-20 md:py-28" style={{ backgroundColor: '#F7F9FA', borderBottom: '1px solid #E5E9EC' }}>
+      <section className="py-20 md:py-28" style={{ backgroundColor: '#F7F9FA', borderBottom: '1px solid #E5E9EC' }}>
         <div className="max-w-7xl mx-auto px-6">
           <FadeSection className="text-center mb-14">
             <div
@@ -971,6 +998,81 @@ export default function HomePage() {
               </FadeSection>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── STATUS TRACKER (illustrative preview) ── */}
+      <section className="py-20 md:py-28 bg-white" style={{ borderBottom: '1px solid #E5E9EC' }}>
+        <div className="max-w-3xl mx-auto px-6">
+          <FadeSection className="text-center mb-12">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+              style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#12B6D6' }} />
+              <span className="text-xs font-semibold tracking-[0.16em] uppercase" style={{ color: '#12B6D6' }}>
+                Application Tracking
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: '#0B2A4A' }}>
+              Always Know Where You Stand
+            </h2>
+            <p className="text-base" style={{ color: '#6B7A8D' }}>
+              Your personal dashboard shows your real-time application status.
+            </p>
+          </FadeSection>
+
+          <FadeSection>
+            <div
+              className="px-8 py-10"
+              style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #F0FAFD 100%)', border: '1px solid #B8EAF3', borderRadius: '16px' }}
+            >
+              <div className="flex items-center justify-center gap-0">
+                {STATUS_STEPS.map((step, i) => {
+                  const isActive = i === activeStatus;
+                  const isDone = i < activeStatus;
+                  return (
+                    <div key={step} className="flex items-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div
+                          className="w-12 h-12 flex items-center justify-center font-bold text-sm transition-all"
+                          style={{
+                            borderRadius: '50%',
+                            ...(isDone
+                              ? { backgroundColor: '#12B6D6', color: '#fff', boxShadow: '0 0 0 4px rgba(18,182,214,0.15)' }
+                              : isActive
+                              ? { backgroundColor: '#0B2A4A', color: '#fff', boxShadow: '0 0 0 5px rgba(11,42,74,0.12)' }
+                              : { backgroundColor: '#fff', color: '#9BAAB8', border: '1.5px solid #D1DAE3' }),
+                          }}
+                        >
+                          {isDone ? <CheckCircle2 size={18} strokeWidth={2} /> : i + 1}
+                        </div>
+                        <span className="text-xs font-semibold" style={{ color: isActive ? '#0B2A4A' : isDone ? '#12B6D6' : '#9BAAB8' }}>
+                          {step}
+                        </span>
+                      </div>
+                      {i < STATUS_STEPS.length - 1 && (
+                        <div
+                          className="mx-6 flex-shrink-0"
+                          style={{
+                            width: '80px',
+                            height: '2px',
+                            marginBottom: '28px',
+                            borderRadius: '2px',
+                            backgroundColor: isDone ? '#12B6D6' : '#D1DAE3',
+                            transition: 'background-color 0.3s ease',
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-center text-sm mt-8" style={{ color: '#6B7A8D' }}>
+                Currently showing: <strong style={{ color: '#0B2A4A' }}>Under Review</strong> — our HR team is evaluating your application.
+              </p>
+            </div>
+          </FadeSection>
         </div>
       </section>
 
@@ -1048,24 +1150,13 @@ export default function HomePage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer ref={contactRef} style={{ backgroundColor: '#0B2A4A' }} className="pt-14 pb-8">
+      <footer style={{ backgroundColor: '#0B2A4A' }} className="pt-14 pb-8">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pb-10" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <div className="h-12 w-12 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0">
-                  <img
-                    src="/logo.png"
-                    alt="Arvin International logo"
-                    className="h-full w-full object-contain p-1"
-                    onError={(e) => {
-                      const t = e.currentTarget;
-                      t.style.display = 'none';
-                      t.parentElement!.innerHTML = '<svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#0B2A4A" stroke-width="2.5" fill="none"/><path d="M20 9 L25 23 H15 Z" fill="#0B2A4A"/><path d="M13 28 Q20 23 27 28" stroke="#0B2A4A" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
-                    }}
-                  />
-                </div>
+                <img src="/logo.png" alt="Arvin International logo" className="h-12 w-12 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
                 <div>
                   <p className="text-sm font-bold text-white">Arvin International Marketing Inc.</p>
                   <p className="text-[10px] font-semibold tracking-[0.14em] uppercase" style={{ color: '#12B6D6' }}>
@@ -1076,9 +1167,6 @@ export default function HomePage() {
               <p className="text-sm italic" style={{ color: '#12B6D6' }}>
                 Moving Ahead to Serve You Better
               </p>
-              <a href="mailto:careers@arvinintl.com" className="text-sm hover:text-white transition-colors" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                careers@arvinintl.com
-              </a>
             </div>
             <div className="flex flex-col gap-3">
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
@@ -1088,7 +1176,7 @@ export default function HomePage() {
                 {NAV_LINKS.map((link) => (
                   <button
                     key={link}
-                    onClick={() => handleNavClick(link)}
+                    onClick={link === 'Open Positions' ? scrollToPositions : undefined}
                     className="text-sm text-white/70 hover:text-white transition-colors bg-transparent border-none cursor-pointer"
                   >
                     {link}
@@ -1110,7 +1198,13 @@ export default function HomePage() {
 
       {/* ── MODALS ── */}
       {selectedJob && <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
-      {showLoginModal && <AuthModal onClose={() => setShowLoginModal(false)} />}
+      {authMode && (
+        <AuthModal
+          mode={authMode}
+          onClose={() => setAuthMode(null)}
+          onSwitch={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+        />
+      )}
       {showAllJobs && <AllPositionsModal onClose={() => setShowAllJobs(false)} onSelect={(job) => setSelectedJob(job)} />}
     </div>
   );

@@ -1,3 +1,118 @@
+# ============================================
+# FIX v3: Remove Employment Type, change Download -> Open/N-A,
+# and allow opening resume/cover letter within the same session
+# ============================================
+
+$demoPath = "src\lib\demo-session.ts"
+$filesPath = "src\lib\demo-files.ts"
+$applyPath = "src\app\apply\page.tsx"
+$appPath = "src\app\application\page.tsx"
+
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+# ---- 1. lib/demo-session.ts (removed employmentType) ----
+$demoContent = @'
+export type DemoUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: 'APPLICANT' | 'HR_ADMIN';
+};
+
+export type DemoApplication = {
+  fullName: string;
+  email: string;
+  phone: string;
+  positionTitle: string;
+  resumeFileName: string;
+  coverLetterFileName?: string | null;
+  submittedAt: string; // ISO date string
+};
+
+const DEMO_USER_KEY = 'mockUser';
+const DEMO_APPLICATION_KEY = 'mockApplicationData';
+
+export function readDemoUser(): DemoUser | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(DEMO_USER_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DemoUser;
+  } catch {
+    return null;
+  }
+}
+
+export function writeDemoUser(user: DemoUser) {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(DEMO_USER_KEY, JSON.stringify(user));
+}
+
+export function clearDemoUser() {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(DEMO_USER_KEY);
+}
+
+export function readDemoApplication(): DemoApplication | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(DEMO_APPLICATION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DemoApplication;
+  } catch {
+    return null;
+  }
+}
+
+export function writeDemoApplication(app: DemoApplication) {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(DEMO_APPLICATION_KEY, JSON.stringify(app));
+}
+
+export function clearDemoApplication() {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(DEMO_APPLICATION_KEY);
+}
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $demoPath), $demoContent, $utf8NoBom)
+Write-Host "Updated: $demoPath" -ForegroundColor Green
+
+# ---- 2. lib/demo-files.ts (NEW - in-memory file store) ----
+$filesContent = @'
+// In-memory store for the actual File objects selected in the Application Form.
+// This is demo-only: it lives in the browser's JS memory (not persisted to
+// sessionStorage, since File/Blob objects can't be serialized to JSON). It
+// survives client-side navigation (Link/router.push) but resets on a full
+// page refresh, since that reloads the JS runtime.
+
+let resumeFile: File | null = null;
+let coverLetterFile: File | null = null;
+
+export function setDemoFiles(resume: File | null, coverLetter: File | null) {
+  resumeFile = resume;
+  coverLetterFile = coverLetter;
+}
+
+export function getDemoResumeFile(): File | null {
+  return resumeFile;
+}
+
+export function getDemoCoverLetterFile(): File | null {
+  return coverLetterFile;
+}
+
+export function clearDemoFiles() {
+  resumeFile = null;
+  coverLetterFile = null;
+}
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $filesPath), $filesContent, $utf8NoBom)
+Write-Host "Created: $filesPath" -ForegroundColor Green
+
+# ---- 3. apply/page.tsx (stores actual File objects, removed employment type map) ----
+$applyContent = @'
 'use client';
 
 import { useState, useRef, useCallback } from "react";
@@ -12,7 +127,7 @@ import {
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
-// â”€â”€â”€ Theme (matches landing page) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Theme (matches landing page) ─────────────────────────────
 const NAVY = "#0B2A4A";
 const CYAN = "#12B6D6";
 const MUTED = "#6B7A8D";
@@ -405,7 +520,7 @@ export default function ApplyPage() {
   );
 }
 
-// â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Header ────────────────────────────────────
 function Header() {
   return (
     <header
@@ -429,7 +544,7 @@ function Header() {
   );
 }
 
-// â”€â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Footer ────────────────────────────────────
 function Footer({ onPrivacy }: { onPrivacy: () => void }) {
   return (
     <footer
@@ -451,7 +566,7 @@ function Footer({ onPrivacy }: { onPrivacy: () => void }) {
   );
 }
 
-// â”€â”€â”€ Privacy Policy Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Privacy Policy Modal ─────────────────────────────────
 function PrivacyModal({ onClose }: { onClose: () => void }) {
   return (
     <div
@@ -555,7 +670,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// â”€â”€â”€ Field wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Field wrapper ─────────────────────────────────
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -578,7 +693,7 @@ function inputStyle(hasError: boolean): React.CSSProperties {
   };
 }
 
-// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Styles ─────────────────────────────────
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   overflowY: "auto",
@@ -587,3 +702,254 @@ const pageStyle: React.CSSProperties = {
 const bgStyle: React.CSSProperties = {
   backgroundColor: BG_LIGHT,
 };
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $applyPath), $applyContent, $utf8NoBom)
+Write-Host "Updated: $applyPath" -ForegroundColor Green
+
+# ---- 4. application/page.tsx (Open/N-A instead of Download, no Employment Type) ----
+$appContent = @'
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { getUserApplication, mockPositions } from '@/lib/mockData';
+import { readDemoUser, readDemoApplication, type DemoUser } from '@/lib/demo-session';
+import { getDemoResumeFile, getDemoCoverLetterFile } from '@/lib/demo-files';
+
+type DisplayApplication = {
+  fullName: string;
+  email: string;
+  phone: string;
+  positionTitle: string;
+  submittedAtLabel: string;
+  resumeFileName: string;
+  coverLetterFileName?: string | null;
+  resumeHref?: string | null;
+  coverLetterHref?: string | null;
+};
+
+export default function ApplicationPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [application, setApplication] = useState<DisplayApplication | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [demoUser] = useState<DemoUser | null>(() => (typeof window !== 'undefined' ? readDemoUser() : null));
+
+  useEffect(() => {
+    if (status === 'unauthenticated' && !demoUser) {
+      router.push('/login');
+    }
+  }, [status, demoUser, router]);
+
+  const fetchApplication = async () => {
+    try {
+      const res = await fetch('/api/applications');
+      if (res.ok) {
+        const data = await res.json();
+        setApplication({
+          fullName: data.user?.name || session?.user?.name || 'N/A',
+          email: data.user?.email || session?.user?.email || 'N/A',
+          phone: data.phoneNumber || 'N/A',
+          positionTitle: data.position?.title || 'N/A',
+          submittedAtLabel: data.submittedAt ? new Date(data.submittedAt).toLocaleDateString() : 'N/A',
+          resumeFileName: data.resumePath || '',
+          coverLetterFileName: data.coverLetterPath || null,
+          resumeHref: data.resumePath || null,
+          coverLetterHref: data.coverLetterPath || null,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching application:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const userId = session?.user?.id || demoUser?.id;
+
+    if (userId) {
+      const timer = window.setTimeout(() => {
+        if (demoUser?.id) {
+          // Prefer the applicant's own freshly-submitted data (saved by the Application Form).
+          const submitted = readDemoApplication();
+          if (submitted) {
+            const resumeFileObj = getDemoResumeFile();
+            const coverLetterFileObj = getDemoCoverLetterFile();
+            setApplication({
+              fullName: submitted.fullName,
+              email: submitted.email,
+              phone: submitted.phone,
+              positionTitle: submitted.positionTitle,
+              submittedAtLabel: new Date(submitted.submittedAt).toLocaleDateString(),
+              resumeFileName: submitted.resumeFileName,
+              coverLetterFileName: submitted.coverLetterFileName,
+              resumeHref: resumeFileObj ? URL.createObjectURL(resumeFileObj) : null,
+              coverLetterHref: coverLetterFileObj ? URL.createObjectURL(coverLetterFileObj) : null,
+            });
+            setLoading(false);
+            return;
+          }
+
+          // Fallback: sample/mock data for demo browsing.
+          const mockApplication = getUserApplication(demoUser.id);
+          if (mockApplication) {
+            const mockPosition = mockPositions.find((p) => p.id === mockApplication.positionId);
+            setApplication({
+              fullName: demoUser.name,
+              email: demoUser.email,
+              phone: mockApplication.phone || 'N/A',
+              positionTitle: mockPosition?.title || 'N/A',
+              submittedAtLabel: mockApplication.createdAt ? new Date(mockApplication.createdAt).toLocaleDateString() : 'N/A',
+              resumeFileName: mockApplication.resumePath,
+              coverLetterFileName: mockApplication.coverLetterPath,
+              resumeHref: mockApplication.resumePath,
+              coverLetterHref: mockApplication.coverLetterPath,
+            });
+          } else {
+            setApplication(null);
+          }
+          setLoading(false);
+          return;
+        }
+
+        void fetchApplication();
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [session, demoUser, status]);
+
+  if (loading || status === 'loading') {
+    return <div className="flex items-center justify-center h-screen" style={{ color: '#6B7A8D' }}>Loading...</div>;
+  }
+
+  if (!application) {
+    return (
+      <div className="min-h-screen bg-[#F7F9FA] py-10 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-2xl border border-[#E5E9EC] shadow-sm p-8 text-center animate-fade-slide-up">
+            <p className="mb-4" style={{ color: '#6B7A8D' }}>You don&apos;t have an application yet.</p>
+            <Link
+              href="/apply"
+              className="inline-block px-6 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+              style={{ backgroundColor: '#0B2A4A' }}
+            >
+              Start Your Application
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F7F9FA] py-10 px-4">
+      <div className="max-w-4xl mx-auto">
+        <Link href="/dashboard" className="hover:underline mb-4 inline-flex items-center gap-1 group text-sm font-medium" style={{ color: '#12B6D6' }}>
+          <span className="transition-transform group-hover:-translate-x-0.5">&larr;</span> Back to Dashboard
+        </Link>
+
+        <div className="bg-white rounded-2xl border border-[#E5E9EC] shadow-sm overflow-hidden mt-2 animate-fade-slide-up">
+          <div className="px-8 py-6 text-white" style={{ backgroundColor: '#0B2A4A' }}>
+            <h1 className="text-2xl font-bold">Your Application</h1>
+          </div>
+
+          <div className="p-8 sm:p-10 space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-[#0B2A4A] mb-4">Personal Information</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Full Name</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.fullName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Email</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Phone</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.phone || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            <hr style={{ borderColor: '#E5E9EC' }} />
+
+            <div>
+              <h2 className="text-lg font-bold text-[#0B2A4A] mb-4">Application Details</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Position Applied</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.positionTitle || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Date Submitted</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.submittedAtLabel || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            <hr style={{ borderColor: '#E5E9EC' }} />
+
+            <div>
+              <h2 className="text-lg font-bold text-[#0B2A4A] mb-4">Documents</h2>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center p-3.5 rounded-xl transition-colors duration-200" style={{ backgroundColor: '#F7F9FA', border: '1px solid #E5E9EC' }}>
+                  <span className="text-sm font-medium text-[#0B2A4A]">Resume: {application.resumeFileName || 'N/A'}</span>
+                  {application.resumeHref ? (
+                    <a
+                      href={application.resumeHref}
+                      className="hover:underline text-sm font-medium"
+                      style={{ color: '#12B6D6' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open
+                    </a>
+                  ) : (
+                    <span className="text-sm font-medium" style={{ color: '#9BAAB8' }}>N/A</span>
+                  )}
+                </div>
+                <div className="flex justify-between items-center p-3.5 rounded-xl transition-colors duration-200" style={{ backgroundColor: '#F7F9FA', border: '1px solid #E5E9EC' }}>
+                  <span className="text-sm font-medium text-[#0B2A4A]">Cover Letter: {application.coverLetterFileName || 'N/A'}</span>
+                  {application.coverLetterHref ? (
+                    <a
+                      href={application.coverLetterHref}
+                      className="hover:underline text-sm font-medium"
+                      style={{ color: '#12B6D6' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open
+                    </a>
+                  ) : (
+                    <span className="text-sm font-medium" style={{ color: '#9BAAB8' }}>N/A</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5 rounded-xl p-4 mt-6" style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}>
+              <span className="mt-0.5" style={{ color: '#12B6D6' }}>Note:</span>
+              <p className="text-sm text-[#0B2A4A]">
+                You cannot edit your application after submission. If you need to make changes, please contact HR.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $appPath), $appContent, $utf8NoBom)
+Write-Host "Updated: $appPath" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Done! Tinanggal na ang Employment Type, at ang Resume/Cover Letter ay OPEN na sa parehong tab (hindi na Download), may N/A kapag walang file." -ForegroundColor Cyan
+Write-Host "Paalala: gagana lang ang Open kung hindi ka nag-full refresh (F5) matapos mag-submit sa loob ng parehong session." -ForegroundColor Yellow
