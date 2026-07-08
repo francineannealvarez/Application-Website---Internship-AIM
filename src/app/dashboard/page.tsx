@@ -382,23 +382,73 @@ function GuideAccordion({ guide }: { guide: (typeof GUIDES)[number] }) {
   );
 }
 
-function RequirementsContent({ docStatuses, isCurrent }: { docStatuses: DocStatus[]; isCurrent: boolean }) {
+type StoredReqFile = { name: string; type: string; dataUrl: string };
+
+function dataUrlToBlobUrl(dataUrl: string): string {
+  const [header, base64] = dataUrl.split(',');
+  const mimeMatch = header.match(/data:(.*);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: mime });
+  return URL.createObjectURL(blob);
+}
+
+function RequirementRow({ label, note, Icon, status, file, onUpload }: {
+  label: string; note: string; Icon: React.ElementType; status: DocStatus;
+  file: StoredReqFile | null; onUpload: (file: File) => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const isSubmitted = status === 'Submitted' && file;
+
+  return (
+    <div className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#E5E9EC] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)' }}><Icon className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-[#0B2A4A]">{label}</div>
+        <div className="text-xs mt-0.5 truncate" style={{ color: '#6B7A8D' }}>{isSubmitted ? file!.name : note}</div>
+      </div>
+      <input ref={inputRef} type="file" accept=".pdf,image/*" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
+      {isSubmitted ? (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <a href={dataUrlToBlobUrl(file!.dataUrl)} target="_blank" rel="noreferrer"
+            className="text-xs font-semibold px-2.5 py-1 rounded-full hover:underline" style={{ color: '#12B6D6' }}>
+            View
+          </a>
+          <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700 shrink-0">
+            <Check className="w-3 h-3" /> Submitted
+          </span>
+          <button type="button" onClick={() => inputRef.current?.click()}
+            className="text-xs font-medium px-2 py-1 rounded-full hover:bg-black/5 shrink-0" style={{ color: '#9BAAB8' }}>
+            Replace
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => inputRef.current?.click()}
+          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-[#EEF9FB] hover:text-[#12B6D6] transition-colors shrink-0">
+          <Clock className="w-3 h-3" /> Upload
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: {
+  docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; isCurrent: boolean;
+}) {
   return (
     <div className="pt-3 space-y-4">
       <div>
         <h4 className="font-semibold text-[#0B2A4A] text-sm">Document Requirements</h4>
-        <p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Please prepare and submit the following before your scheduled deadline.</p>
+        <p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Please prepare and submit the following before your scheduled deadline. Upload a clear photo or PDF scan of each document.</p>
       </div>
 
       <div className="space-y-2">
         {REQUIREMENTS_MAIN.map(({ label, note, Icon }, idx) => (
-          <div key={idx} className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#E5E9EC] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)' }}><Icon className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
-            <div className="flex-1 min-w-0"><div className="text-sm font-semibold text-[#0B2A4A]">{label}</div><div className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>{note}</div></div>
-            <span className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full shrink-0', docStatuses[idx] === 'Submitted' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>
-              {docStatuses[idx] === 'Submitted' ? <Check className="w-3 h-3" /> : <Clock className="w-3 h-3" />}{docStatuses[idx]}
-            </span>
-          </div>
+          <RequirementRow key={idx} label={label} note={note} Icon={Icon}
+            status={docStatuses[idx]} file={docFiles[idx]} onUpload={(file) => onDocUpload(idx, file)} />
         ))}
       </div>
 
@@ -452,7 +502,7 @@ function RequirementsContent({ docStatuses, isCurrent }: { docStatuses: DocStatu
   );
 }
 
-function HiringProcessCard({ steps, completedSteps, docStatuses, onSimulateHrComplete }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; onSimulateHrComplete: () => void; }) {
+function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void; }) {
   const totalSteps = steps.length;
   const [expandedStep, setExpandedStep] = useState<number | null>(completedSteps < totalSteps ? completedSteps : null);
   const handleRowClick = (idx: number) => { if (idx > completedSteps) return; setExpandedStep(prev => prev === idx ? null : idx); };
@@ -520,7 +570,7 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, onSimulateHrCom
                 ) : step.key === 'department' ? (
                   <StepDetailContent stepIdx={1} isCurrent={isCurrent} />
                 ) : step.key === 'requirements' ? (
-                  <RequirementsContent docStatuses={docStatuses} isCurrent={isCurrent} />
+                  <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />
                 ) : (
                   <OnboardingContent isCurrent={isCurrent} />
                 )}
@@ -588,6 +638,7 @@ export default function ApplicantDashboard() {
   const [showHiringProcess, setShowHiringProcess] = useState(false);
   const [hiringCompletedSteps, setHiringCompletedSteps] = useState(0);
   const [docStatuses, setDocStatuses] = useState<DocStatus[]>(Array(REQUIREMENTS_MAIN.length).fill('Pending'));
+  const [docFiles, setDocFiles] = useState<(StoredReqFile | null)[]>(Array(REQUIREMENTS_MAIN.length).fill(null));
   const [modalOpen, setModalOpen] = useState(false);
   const [congratsOpen, setCongratsOpen] = useState(false);
 
@@ -596,6 +647,16 @@ export default function ApplicantDashboard() {
       router.push('/login');
     }
   }, [status, demoUser, router]);
+
+  const handleDocUpload = (idx: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setDocFiles((prev) => prev.map((f, i) => (i === idx ? { name: file.name, type: file.type, dataUrl } : f)));
+      setDocStatuses((prev) => prev.map((s, i) => (i === idx ? 'Submitted' : s)));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSimulateHrComplete = () => {
     setHiringCompletedSteps(prev => {
@@ -651,7 +712,7 @@ export default function ApplicantDashboard() {
             <Link href="/apply" className="inline-block px-6 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Start Your Application</Link>
           </div>
         ) : showHiringProcess ? (
-          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} onSimulateHrComplete={handleSimulateHrComplete} />
+          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} />
         ) : (
           <ApplicationStatusCard stage={applicationStage} onContinue={() => setModalOpen(true)} setApplicationStage={setApplicationStage} />
         )}
