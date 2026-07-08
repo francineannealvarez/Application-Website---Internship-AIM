@@ -1,26 +1,69 @@
-// In-memory store for the actual File objects selected in the Application Form.
-// This is demo-only: it lives in the browser's JS memory (not persisted to
-// sessionStorage, since File/Blob objects can't be serialized to JSON). It
-// survives client-side navigation (Link/router.push) but resets on a full
-// page refresh, since that reloads the JS runtime.
+// Demo-only store for the resume/cover letter files selected during
+// application. Files are converted to base64 data URLs and saved in
+// sessionStorage, so — unlike a plain in-memory JS variable — they survive
+// page refreshes within the same browser tab (cleared when the tab closes,
+// since a real backend/file storage isn't wired up yet).
 
-let resumeFile: File | null = null;
-let coverLetterFile: File | null = null;
+const RESUME_KEY = 'arvinDemoResumeFile';
+const COVER_KEY = 'arvinDemoCoverLetterFile';
 
-export function setDemoFiles(resume: File | null, coverLetter: File | null) {
-  resumeFile = resume;
-  coverLetterFile = coverLetter;
+export type StoredDemoFile = { name: string; type: string; dataUrl: string };
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
-export function getDemoResumeFile(): File | null {
-  return resumeFile;
+export async function setDemoFiles(resume: File | null, coverLetter: File | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (resume) {
+      const dataUrl = await fileToDataUrl(resume);
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify({ name: resume.name, type: resume.type, dataUrl }));
+    } else {
+      sessionStorage.removeItem(RESUME_KEY);
+    }
+  } catch {
+    /* file too large for sessionStorage, or storage unavailable — viewer will show N/A */
+  }
+
+  try {
+    if (coverLetter) {
+      const dataUrl = await fileToDataUrl(coverLetter);
+      sessionStorage.setItem(COVER_KEY, JSON.stringify({ name: coverLetter.name, type: coverLetter.type, dataUrl }));
+    } else {
+      sessionStorage.removeItem(COVER_KEY);
+    }
+  } catch {
+    /* same as above */
+  }
 }
 
-export function getDemoCoverLetterFile(): File | null {
-  return coverLetterFile;
+function readStored(key: string): StoredDemoFile | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredDemoFile;
+  } catch {
+    return null;
+  }
+}
+
+export function getDemoResumeFile(): StoredDemoFile | null {
+  return readStored(RESUME_KEY);
+}
+
+export function getDemoCoverLetterFile(): StoredDemoFile | null {
+  return readStored(COVER_KEY);
 }
 
 export function clearDemoFiles() {
-  resumeFile = null;
-  coverLetterFile = null;
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(RESUME_KEY);
+  sessionStorage.removeItem(COVER_KEY);
 }

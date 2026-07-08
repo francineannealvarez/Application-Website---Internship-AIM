@@ -12,7 +12,7 @@ import {
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
-// â”€â”€â”€ Theme (matches landing page) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Theme (matches landing page) ─────────────────────────────────
 const NAVY = "#0B2A4A";
 const CYAN = "#12B6D6";
 const MUTED = "#6B7A8D";
@@ -30,6 +30,8 @@ const POSITIONS = [
   "Operations Manager",
   "Sales Executive",
   "Business Development Associate",
+  "Clerk",
+  "Checker",
 ];
 
 // Map each position to its department (shown on the success screen)
@@ -42,6 +44,22 @@ const DEPARTMENT_MAP: Record<string, string> = {
   "Operations Manager": "Operations",
   "Sales Executive": "Sales",
   "Business Development Associate": "Business Development",
+  "Clerk": "Operations",
+  "Checker": "Operations",
+};
+
+// Employment type per position (defaults to Full-time for corporate roles)
+const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
+  "Software Engineer": "Full-time",
+  "Product Manager": "Full-time",
+  "UI/UX Designer": "Full-time",
+  "Data Analyst": "Full-time",
+  "Marketing Specialist": "Full-time",
+  "Operations Manager": "Full-time",
+  "Sales Executive": "Full-time",
+  "Business Development Associate": "Full-time",
+  "Clerk": "Full-time",
+  "Checker": "Full-time",
 };
 
 // Format PH phone: auto-inserts spaces as user types
@@ -71,6 +89,7 @@ export default function ApplyPage() {
   const [coverLetterDragging, setCoverLetterDragging] = useState(false);
   const [positionOpen, setPositionOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,21 +106,25 @@ export default function ApplyPage() {
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    setSubmitting(true);
     writeDemoUser({ id: "2", name: form.fullName, email: form.email, role: "APPLICANT" });
-    setDemoFiles(file, coverLetterFile);
     writeDemoApplication({
       fullName: form.fullName,
       email: form.email,
       phone: form.phone,
       positionTitle: form.position,
+      employmentType: EMPLOYMENT_TYPE_MAP[form.position] || "Full-time",
       resumeFileName: file?.name || "",
       coverLetterFileName: coverLetterFile?.name || null,
       submittedAt: new Date().toISOString(),
     });
+    // Persist the actual files so the "View Application" page can display/open them.
+    await setDemoFiles(file, coverLetterFile);
+    setSubmitting(false);
     setSubmitted(true);
   };
 
@@ -377,10 +400,11 @@ export default function ApplyPage() {
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white tracking-wide hover:opacity-90 active:scale-[0.99] transition-all duration-150 mt-1"
+                disabled={submitting}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-white tracking-wide hover:opacity-90 active:scale-[0.99] transition-all duration-150 mt-1 disabled:opacity-60"
                 style={{ backgroundColor: NAVY }}
               >
-                Submit Application
+                {submitting ? "Submitting..." : "Submit Application"}
               </button>
             </form>
           </div>
@@ -405,7 +429,7 @@ export default function ApplyPage() {
   );
 }
 
-// â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Header ─────────────────────────────────────────
 function Header() {
   return (
     <header
@@ -429,7 +453,7 @@ function Header() {
   );
 }
 
-// â”€â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Footer ─────────────────────────────────────────
 function Footer({ onPrivacy }: { onPrivacy: () => void }) {
   return (
     <footer
@@ -451,7 +475,7 @@ function Footer({ onPrivacy }: { onPrivacy: () => void }) {
   );
 }
 
-// â”€â”€â”€ Privacy Policy Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Privacy Policy Modal ─────────────────────────────────────
 function PrivacyModal({ onClose }: { onClose: () => void }) {
   return (
     <div
@@ -555,7 +579,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// â”€â”€â”€ Field wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Field wrapper ─────────────────────────────────────────
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -578,7 +602,7 @@ function inputStyle(hasError: boolean): React.CSSProperties {
   };
 }
 
-// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Styles ─────────────────────
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   overflowY: "auto",

@@ -1,3 +1,12 @@
+﻿# ============================================
+# FIX: AssessmentContent.tsx syntax error (border property was cut off mid-edit)
+# Restored T.border, fixed broken style line, added consistent borders to all cards
+# ============================================
+
+$targetPath = "src\components\dashboard\AssessmentContent.tsx"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+$content = @'
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +16,7 @@ const T = {
   navy: '#0B2A4A',
   cyan: '#12B6D6',
   gray: '#6B7A8D',
-  
+  border: '#E5E9EC',
   bg: '#F7F9FA',
   faint: '#9BAAB8',
   cyanBg: '#EEF9FB',
@@ -43,7 +52,7 @@ export default function AssessmentContent({ isCurrent, onSubmit }: { isCurrent: 
   if (submitted) {
     return (
       <div className="pt-3">
-        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
+        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg, border: `1px solid ${T.cyanBorder}` }}>
           <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
           <span style={{ color: T.navy }}>
             Your assessment answers have been noted. HR is reviewing your results — please wait for an update before the next stage unlocks.
@@ -55,7 +64,7 @@ export default function AssessmentContent({ isCurrent, onSubmit }: { isCurrent: 
 
   return (
     <div className="pt-3 space-y-4">
-      <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm mb-1" style={{ backgroundColor: '#FFFBEB',  color: '#92400E' }}>
+      <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm mb-1" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}>
         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#D97706' }} />
         <span>Please answer all questions completely. Take your time — there is no time limit for this essay assessment.</span>
       </div>
@@ -81,13 +90,13 @@ export default function AssessmentContent({ isCurrent, onSubmit }: { isCurrent: 
             rows={7}
             placeholder="Type your answer here..."
             className="w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition-colors focus:border-[#12B6D6] resize-none"
-            style={{ backgroundColor: T.bg,  color: T.navy }}
+            style={{ backgroundColor: T.bg, borderColor: T.border, color: T.navy }}
           />
         </div>
       ))}
 
       {!canSubmit && (
-        <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2',  color: '#9F1239' }}>
+        <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', border: '1px solid #FECDD3', color: '#9F1239' }}>
           Please answer all {QUESTIONS.length} questions before submitting. ({missing} remaining)
         </div>
       )}
@@ -101,7 +110,7 @@ export default function AssessmentContent({ isCurrent, onSubmit }: { isCurrent: 
       </button>
 
       {isCurrent && (
-        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
+        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, border: `1px solid ${T.border}`, color: T.gray }}>
           <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
           <span>Once submitted, HR will review your answers before the Department Interview stage unlocks.</span>
         </div>
@@ -109,3 +118,10 @@ export default function AssessmentContent({ isCurrent, onSubmit }: { isCurrent: 
     </div>
   );
 }
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $targetPath), $content, $utf8NoBom)
+Write-Host "Updated: $targetPath" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Done! Naayos na ang syntax error. Nabalik na ang border property, at nadagdagan ng consistent na border ang lahat ng cards sa Assessment step." -ForegroundColor Cyan

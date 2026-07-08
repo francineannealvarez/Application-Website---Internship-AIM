@@ -1,40 +1,40 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
   ChevronDown, Check, Clock, AlertCircle, User, Users, GraduationCap,
-  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info,
+  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Theme tokens — matches the rest of src/app/dashboard/page.tsx exactly
-   ───────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Theme tokens â€” matches the rest of src/app/dashboard/page.tsx exactly
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const T = {
   navy: '#0B2A4A',
   cyan: '#12B6D6',
   gray: '#6B7A8D',
-  border: '#E5E9EC',
   bg: '#F7F9FA',
   faint: '#9BAAB8',
   cyanBg: '#EEF9FB',
   cyanBorder: '#B8EAF3',
-  locked: '#D1DAE3',
+  locked: '#D1DAE3'
+  
 };
 
 function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Generic field primitives
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-semibold mb-1.5" style={{ color: T.navy }}>{children}</label>;
 }
 
 const inputCls =
-  'w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition-colors focus:border-[#12B6D6]';
-const inputStyle: React.CSSProperties = { backgroundColor: T.bg, borderColor: T.border, color: T.navy };
+  'w-full px-3.5 py-2.5 text-sm rounded-lg  outline-none transition-colors focus:';
+const inputStyle: React.CSSProperties = { backgroundColor: T.bg, color: T.navy };
 
 function TextField({ label, value, onChange, placeholder, type = 'text' }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
@@ -55,7 +55,7 @@ function Select({ label, value, onChange, options, placeholder = 'Select...' }: 
     <div>
       <Label>{label}</Label>
       <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls} style={inputStyle}>
-        <option value="">{placeholder}</option>
+        <option value="" disabled>{placeholder}</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>
@@ -86,8 +86,8 @@ function YesNo({ label, value, onChange, detailValue, onDetailChange, detailLabe
           <button key={opt} type="button" onClick={() => onChange(opt)}
             className="flex items-center gap-1.5 text-sm font-medium"
             style={{ color: value === opt ? T.navy : T.gray }}>
-            <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-              style={{ borderColor: value === opt ? T.cyan : T.border, backgroundColor: value === opt ? T.cyan : 'transparent' }}>
+            <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              style={{  backgroundColor: value === opt ? T.cyan : 'transparent' }}>
               {value === opt && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
             </span>
             {opt === 'yes' ? 'Yes' : 'No'}
@@ -105,8 +105,8 @@ function YesNo({ label, value, onChange, detailValue, onDetailChange, detailLabe
 function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button type="button" onClick={() => onChange(!checked)} className="flex items-center gap-2 text-sm" style={{ color: T.navy }}>
-      <span className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
-        style={{ borderColor: checked ? T.cyan : T.border, backgroundColor: checked ? T.cyan : 'transparent' }}>
+      <span className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+        style={{  backgroundColor: checked ? T.cyan : 'transparent' }}>
         {checked && <Check className="w-3 h-3 text-white" />}
       </span>
       {label}
@@ -114,16 +114,16 @@ function Checkbox({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Accordion section wrapper
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Section({ id, icon: Icon, title, subtitle, openId, setOpenId, children }: {
   id: string; icon: React.ElementType; title: string; subtitle: string;
   openId: string | null; setOpenId: (id: string | null) => void; children: React.ReactNode;
 }) {
   const isOpen = openId === id;
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: T.border }}>
+    <div className="rounded-xl overflow-hidden" style={{}}>
       <button type="button" onClick={() => setOpenId(isOpen ? null : id)}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-black/[0.02] transition-colors">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: T.cyanBg }}>
@@ -136,7 +136,7 @@ function Section({ id, icon: Icon, title, subtitle, openId, setOpenId, children 
         <ChevronDown className={cn('w-4 h-4 shrink-0 transition-transform duration-200', isOpen && 'rotate-180')} style={{ color: T.faint }} />
       </button>
       {isOpen && (
-        <div className="px-4 pb-5 pt-1 space-y-4 border-t animate-fade-slide-up" style={{ borderColor: T.border }}>
+        <div className="px-4 pb-5 pt-1 space-y-4 animate-fade-slide-up" style={{}}>
           {children}
         </div>
       )}
@@ -144,9 +144,9 @@ function Section({ id, icon: Icon, title, subtitle, openId, setOpenId, children 
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Repeating row helpers
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RepeatingRows<T>({ rows, setRows, empty, fields }: {
   rows: T[]; setRows: (rows: T[]) => void; empty: T;
   fields: { key: keyof T; label: string; grow?: boolean }[];
@@ -215,50 +215,50 @@ function NAPersonSection({ label, na, setNa, state, setState, nameLabel = 'Name'
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Philippine address data & other dropdown option lists
-   Note: City/Municipality and Barangay stay as free text — the full PSGC
+   Note: City/Municipality and Barangay stay as free text â€” the full PSGC
    list (1,600+ cities/municipalities, 42,000+ barangays) is too large to
    embed here, but Region and Province are real dropdowns.
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const PH_REGIONS = [
-  'NCR – National Capital Region',
-  'CAR – Cordillera Administrative Region',
-  'Region I – Ilocos Region',
-  'Region II – Cagayan Valley',
-  'Region III – Central Luzon',
-  'Region IV-A – CALABARZON',
+  'NCR â€“ National Capital Region',
+  'CAR â€“ Cordillera Administrative Region',
+  'Region I â€“ Ilocos Region',
+  'Region II â€“ Cagayan Valley',
+  'Region III â€“ Central Luzon',
+  'Region IV-A â€“ CALABARZON',
   'MIMAROPA Region',
-  'Region V – Bicol Region',
-  'Region VI – Western Visayas',
-  'Region VII – Central Visayas',
-  'Region VIII – Eastern Visayas',
-  'Region IX – Zamboanga Peninsula',
-  'Region X – Northern Mindanao',
-  'Region XI – Davao Region',
-  'Region XII – SOCCSKSARGEN',
-  'Region XIII – Caraga',
-  'BARMM – Bangsamoro Autonomous Region',
+  'Region V â€“ Bicol Region',
+  'Region VI â€“ Western Visayas',
+  'Region VII â€“ Central Visayas',
+  'Region VIII â€“ Eastern Visayas',
+  'Region IX â€“ Zamboanga Peninsula',
+  'Region X â€“ Northern Mindanao',
+  'Region XI â€“ Davao Region',
+  'Region XII â€“ SOCCSKSARGEN',
+  'Region XIII â€“ Caraga',
+  'BARMM â€“ Bangsamoro Autonomous Region',
 ];
 
 const PH_PROVINCES_BY_REGION: Record<string, string[]> = {
-  'NCR – National Capital Region': ['Metro Manila'],
-  'CAR – Cordillera Administrative Region': ['Abra', 'Apayao', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province'],
-  'Region I – Ilocos Region': ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'],
-  'Region II – Cagayan Valley': ['Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino'],
-  'Region III – Central Luzon': ['Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales'],
-  'Region IV-A – CALABARZON': ['Batangas', 'Cavite', 'Laguna', 'Quezon', 'Rizal'],
+  'NCR â€“ National Capital Region': ['Metro Manila'],
+  'CAR â€“ Cordillera Administrative Region': ['Abra', 'Apayao', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province'],
+  'Region I â€“ Ilocos Region': ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'],
+  'Region II â€“ Cagayan Valley': ['Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino'],
+  'Region III â€“ Central Luzon': ['Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales'],
+  'Region IV-A â€“ CALABARZON': ['Batangas', 'Cavite', 'Laguna', 'Quezon', 'Rizal'],
   'MIMAROPA Region': ['Marinduque', 'Occidental Mindoro', 'Oriental Mindoro', 'Palawan', 'Romblon'],
-  'Region V – Bicol Region': ['Albay', 'Camarines Norte', 'Camarines Sur', 'Catanduanes', 'Masbate', 'Sorsogon'],
-  'Region VI – Western Visayas': ['Aklan', 'Antique', 'Capiz', 'Guimaras', 'Iloilo', 'Negros Occidental'],
-  'Region VII – Central Visayas': ['Bohol', 'Cebu', 'Negros Oriental', 'Siquijor'],
-  'Region VIII – Eastern Visayas': ['Biliran', 'Eastern Samar', 'Leyte', 'Northern Samar', 'Samar', 'Southern Leyte'],
-  'Region IX – Zamboanga Peninsula': ['Zamboanga del Norte', 'Zamboanga del Sur', 'Zamboanga Sibugay'],
-  'Region X – Northern Mindanao': ['Bukidnon', 'Camiguin', 'Lanao del Norte', 'Misamis Occidental', 'Misamis Oriental'],
-  'Region XI – Davao Region': ['Davao de Oro', 'Davao del Norte', 'Davao del Sur', 'Davao Occidental', 'Davao Oriental'],
-  'Region XII – SOCCSKSARGEN': ['Cotabato', 'Sarangani', 'South Cotabato', 'Sultan Kudarat'],
-  'Region XIII – Caraga': ['Agusan del Norte', 'Agusan del Sur', 'Dinagat Islands', 'Surigao del Norte', 'Surigao del Sur'],
-  'BARMM – Bangsamoro Autonomous Region': ['Basilan', 'Lanao del Sur', 'Maguindanao del Norte', 'Maguindanao del Sur', 'Sulu', 'Tawi-Tawi'],
+  'Region V â€“ Bicol Region': ['Albay', 'Camarines Norte', 'Camarines Sur', 'Catanduanes', 'Masbate', 'Sorsogon'],
+  'Region VI â€“ Western Visayas': ['Aklan', 'Antique', 'Capiz', 'Guimaras', 'Iloilo', 'Negros Occidental'],
+  'Region VII â€“ Central Visayas': ['Bohol', 'Cebu', 'Negros Oriental', 'Siquijor'],
+  'Region VIII â€“ Eastern Visayas': ['Biliran', 'Eastern Samar', 'Leyte', 'Northern Samar', 'Samar', 'Southern Leyte'],
+  'Region IX â€“ Zamboanga Peninsula': ['Zamboanga del Norte', 'Zamboanga del Sur', 'Zamboanga Sibugay'],
+  'Region X â€“ Northern Mindanao': ['Bukidnon', 'Camiguin', 'Lanao del Norte', 'Misamis Occidental', 'Misamis Oriental'],
+  'Region XI â€“ Davao Region': ['Davao de Oro', 'Davao del Norte', 'Davao del Sur', 'Davao Occidental', 'Davao Oriental'],
+  'Region XII â€“ SOCCSKSARGEN': ['Cotabato', 'Sarangani', 'South Cotabato', 'Sultan Kudarat'],
+  'Region XIII â€“ Caraga': ['Agusan del Norte', 'Agusan del Sur', 'Dinagat Islands', 'Surigao del Norte', 'Surigao del Sur'],
+  'BARMM â€“ Bangsamoro Autonomous Region': ['Basilan', 'Lanao del Sur', 'Maguindanao del Norte', 'Maguindanao del Sur', 'Sulu', 'Tawi-Tawi']
 };
 
 const PH_MOBILE_RE = /^(09\d{9}|\+639\d{9})$/;
@@ -279,15 +279,14 @@ const RELIGION_OPTIONS = [
 ];
 
 const HOW_LEARNED_OPTIONS = [
-  'Facebook', 'JobStreet', 'Indeed', 'LinkedIn', 'Company Website', 'Walk-in Applicant',
-  'Referral from Employee', 'Job Fair', 'Others',
+  'Facebook', 'JobStreet', 'Indeed', 'LinkedIn', 'Referral from Employee',
 ];
 
 const CHILDREN_COUNT_OPTIONS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Form state shape
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 type Person = { name: string; address: string; occupation: string; age: string };
 type Child = { name: string; age: string };
 type Relative = { name: string; positionDept: string; relationship: string };
@@ -308,18 +307,18 @@ const emptyExam: ExamRow = { exam: '', date: '', rating: '' };
 const emptySimpleRow: SimpleRow = { title: '', place: '', dates: '' };
 const emptyJob: JobRow = {
   company: '', position: '', lastSalary: '', allowances: '', bonus: '', otherBenefits: '',
-  majorFunctions: '', accomplishments: '', reasonForLeaving: '', immediateSuperior: '', employmentDuration: '', contactNo: '',
+  majorFunctions: '', accomplishments: '', reasonForLeaving: '', immediateSuperior: '', employmentDuration: '', contactNo: ''
 };
 const emptyRef: RefRow = { name: '', occupation: '', telephone: '' };
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Main component
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
   const [submitted, setSubmitted] = useState(false);
   const [openId, setOpenId] = useState<string | null>('basic');
 
-  // ── Basic / contact (deduped: Date + Position + Salary Desired asked once) ──
+  // â”€â”€ Basic / contact (deduped: Date + Position + Salary Desired asked once) â”€â”€
   const [dateApplied, setDateApplied] = useState('');
   const [positionApplied, setPositionApplied] = useState('');
   const [desiredSalary, setDesiredSalary] = useState('');
@@ -358,7 +357,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [philhealth, setPhilhealth] = useState('');
   const [healthIssues, setHealthIssues] = useState('');
 
-  // ── Family background ──
+  // â”€â”€ Family background â”€â”€
   const [father, setFather] = useState<Person>(emptyPerson);
   const [naFather, setNaFather] = useState(false);
   const [mother, setMother] = useState<Person>(emptyPerson);
@@ -374,7 +373,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [howLearnedOther, setHowLearnedOther] = useState('');
   const [referredBy, setReferredBy] = useState('');
 
-  // ── Education ──
+  // â”€â”€ Education â”€â”€
   const [eduElementary, setEduElementary] = useState<EduRow>({ school: '', years: '', degree: '', honors: '' });
   const [eduSecondary, setEduSecondary] = useState<EduRow>({ school: '', years: '', degree: '', honors: '' });
   const [eduCollege, setEduCollege] = useState<EduRow>({ school: '', years: '', degree: '', honors: '' });
@@ -395,7 +394,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [activities, setActivities] = useState<SimpleRow[]>([emptySimpleRow]);
   const [specialSkills, setSpecialSkills] = useState('');
 
-  // ── Work experience (up to 3 companies, per the form) ──
+  // â”€â”€ Work experience (up to 3 companies, per the form) â”€â”€
   const [jobs, setJobs] = useState<JobRow[]>([emptyJob, emptyJob]);
   const updateJob = (idx: number, patch: Partial<JobRow>) => {
     const next = [...jobs];
@@ -403,14 +402,14 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
     setJobs(next);
   };
 
-  // ── References & emergency contact ──
+  // â”€â”€ References & emergency contact â”€â”€
   const [charRefs, setCharRefs] = useState<RefRow[]>([emptyRef, emptyRef]);
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyRelationship, setEmergencyRelationship] = useState('');
   const [emergencyTelephone, setEmergencyTelephone] = useState('');
   const [emergencyAddress, setEmergencyAddress] = useState('');
 
-  // ── Declarations ──
+  // â”€â”€ Declarations â”€â”€
   const [outstandingLoans, setOutstandingLoans] = useState<'yes' | 'no' | ''>('');
   const [outstandingLoansDetail, setOutstandingLoansDetail] = useState('');
   const [convicted, setConvicted] = useState<'yes' | 'no' | ''>('');
@@ -426,7 +425,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [doYouSmoke, setDoYouSmoke] = useState<'yes' | 'no' | ''>('');
   const [howSoonStart, setHowSoonStart] = useState('');
 
-  // ── Personality profiling ──
+  // â”€â”€ Personality profiling â”€â”€
   const [resignTriggers, setResignTriggers] = useState('');
   const [stayFactors, setStayFactors] = useState('');
   const [handleStress, setHandleStress] = useState('');
@@ -441,7 +440,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [familyIssues, setFamilyIssues] = useState('');
   const [selfDescription, setSelfDescription] = useState('');
 
-  // ── Preferences ──
+  // â”€â”€ Preferences â”€â”€
   const [willingMonToSat, setWillingMonToSat] = useState('');
   const [willingShifting, setWillingShifting] = useState('');
   const [willingAnywhere, setWillingAnywhere] = useState('');
@@ -450,7 +449,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [willingTraining, setWillingTraining] = useState('');
   const [freeLodging, setFreeLodging] = useState<'yes' | 'no' | ''>('');
 
-  // ── Certification ──
+  // â”€â”€ Certification â”€â”€
   const [certify, setCertify] = useState(false);
   const [eSignature, setESignature] = useState('');
 
@@ -583,7 +582,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   check('Personality Profiling', 'Strengths (all 3)', strengths.every(f));
   check('Personality Profiling', 'Areas for Improvement (all 3)', improvements.every(f));
   check('Personality Profiling', 'Top 5 Core Values (all 5)', coreValues.every(f));
-  check('Personality Profiling', '3–5 year plan', f(futurePlans));
+  check('Personality Profiling', '3â€“5 year plan', f(futurePlans));
   check('Personality Profiling', 'Parental/partner support', f(parentalSupport));
   check('Personality Profiling', 'Family medical condition', f(familyMedicalCondition));
   check('Personality Profiling', 'Family issues or disputes', f(familyIssues));
@@ -613,7 +612,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   if (submitted) {
     return (
       <div className="pt-3 space-y-3">
-        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg, border: `1px solid ${T.cyanBorder}` }}>
+        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
           <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
           <span style={{ color: T.navy }}>
             Personal Data Sheet submitted! HR will review your information and move you forward to the Assessment stage.
@@ -625,7 +624,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
 
   return (
     <div className="pt-3 space-y-3">
-      <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm mb-1" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}>
+      <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm mb-1" style={{ backgroundColor: '#FFFBEB', color: '#92400E' }}>
         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#D97706' }} />
         <span>Please fill out this Personal Data Sheet completely and accurately. This is required before you can proceed to the Assessment stage.</span>
       </div>
@@ -680,7 +679,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
           </div>
           <input value={provStreet} onChange={(e) => setProvStreet(e.target.value)} placeholder="House No. / Street / Subdivision" className={inputCls + ' text-xs w-full'} style={inputStyle} />
         </div>
-        <p className="text-[11px] -mt-2" style={{ color: T.faint }}>City/Municipality and Barangay are typed manually — the full nationwide list (1,600+ cities/municipalities, 42,000+ barangays) isn't practical to embed as a dropdown.</p>
+        <p className="text-[11px] -mt-2" style={{ color: T.faint }}>City/Municipality and Barangay are typed manually â€” the full nationwide list (1,600+ cities/municipalities, 42,000+ barangays) isn't practical to embed as a dropdown.</p>
 
         <TextField label="How often do you visit your province?" value={howOftenVisit} onChange={setHowOftenVisit} />
         <TextField label="How many minutes travel time to area of assignment?" value={travelTime} onChange={setTravelTime} />
@@ -724,7 +723,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
           <div className="flex flex-wrap gap-4">
             {['Single', 'Married', 'Widowed', 'Separated'].map((s) => (
               <button key={s} type="button" onClick={() => setCivilStatus(s)} className="flex items-center gap-1.5 text-sm font-medium" style={{ color: civilStatus === s ? T.navy : T.gray }}>
-                <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0" style={{ borderColor: civilStatus === s ? T.cyan : T.border, backgroundColor: civilStatus === s ? T.cyan : 'transparent' }}>
+                <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{  backgroundColor: civilStatus === s ? T.cyan : 'transparent' }}>
                   {civilStatus === s && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </span>
                 {s}
@@ -807,7 +806,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (fromâ€“to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
                 <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
                 <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
               </div>
@@ -859,11 +858,11 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
       </Section>
 
       <Section id="work" icon={Briefcase} title="Work Experience" subtitle="Add each previous company" openId={openId} setOpenId={setOpenId}>
-        <Checkbox label="N/A — I have no prior work experience" checked={naWorkExperience} onChange={setNaWorkExperience} />
+        <Checkbox label="N/A â€” I have no prior work experience" checked={naWorkExperience} onChange={setNaWorkExperience} />
         {!naWorkExperience && (
           <>
             {jobs.map((job, idx) => (
-              <div key={idx} className="rounded-lg p-3.5 space-y-2.5" style={{ backgroundColor: T.bg, border: `1px solid ${T.border}` }}>
+              <div key={idx} className="rounded-lg p-3.5 space-y-2.5" style={{ backgroundColor: T.bg }}>
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-bold" style={{ color: T.cyan }}>Company #{idx + 1}</div>
                   {jobs.length > 1 && (
@@ -991,7 +990,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
       </Section>
 
       <Section id="certify" icon={PenLine} title="Certification & E-Signature" subtitle="Required before you can submit" openId={openId} setOpenId={setOpenId}>
-        <div className="rounded-xl p-4 text-xs leading-relaxed space-y-3" style={{ backgroundColor: T.bg, border: `1px solid ${T.border}`, color: T.gray }}>
+        <div className="rounded-xl p-4 text-xs leading-relaxed space-y-3" style={{ backgroundColor: T.bg, color: T.gray }}>
           <p>
             I hereby confirm that the mere filing of this form does not obligate the company to hire my services. I understand that if I am hired,
             this application and all I have stated herein shall form part of my 201 file.
@@ -1006,13 +1005,13 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         <TextField label="Applicant's Signature (type your full name as e-signature)" value={eSignature} onChange={setESignature} placeholder="Juan Dela Cruz" />
       </Section>
 
-      <div className="flex items-start gap-2.5 rounded-xl p-3 text-xs" style={{ backgroundColor: T.bg, border: `1px solid ${T.border}`, color: T.gray }}>
+      <div className="flex items-start gap-2.5 rounded-xl p-3 text-xs" style={{ backgroundColor: T.bg, color: T.gray }}>
         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: T.faint }} />
         <span>A sketch of your residence (going to/from AIMI or your area of assignment) may be requested separately by HR on a hard copy sheet.</span>
       </div>
 
       {!canSubmit && missingSections.length > 0 && (
-        <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', border: '1px solid #FECDD3', color: '#9F1239' }}>
+        <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', color: '#9F1239' }}>
           <p className="font-semibold mb-1">Please complete all fields before submitting (write "N/A" if a question doesn't apply to you):</p>
           <ul className="list-disc list-inside space-y-0.5">
             {missingSections.map((s) => <li key={s}>{s}</li>)}
@@ -1029,7 +1028,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
       </button>
 
       {isCurrent && (
-        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, border: `1px solid ${T.border}`, color: T.gray }}>
+        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
           <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
           <span>Once submitted, HR will review your Personal Data Sheet before advancing you to the Assessment stage.</span>
         </div>
@@ -1037,3 +1036,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
     </div>
   );
 }
+
+
+
+

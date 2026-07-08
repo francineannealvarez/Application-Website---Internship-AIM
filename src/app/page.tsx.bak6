@@ -57,9 +57,6 @@ type Job = {
   summary: string;
   responsibilities: string[];
   qualifications: string[];
-  dateOffered?: string;
-  startDate?: string;
-  salaryOffered?: string;
 };
 
 const ALL_JOBS: Job[] = [
@@ -84,9 +81,6 @@ const ALL_JOBS: Job[] = [
       'Proficient in MS Office; knowledge of Canva or Adobe Suite is a plus',
       'Highly organized, creative, and results-driven',
     ],
-    dateOffered: 'July 10, 2026',
-    startDate: 'August 1, 2026',
-    salaryOffered: 'PHP 28,000 - 35,000 / month',
   },
   {
     title: 'Sales Representative',
@@ -109,9 +103,6 @@ const ALL_JOBS: Job[] = [
       'Willing to travel within the assigned territory',
       'Self-motivated with a competitive drive to succeed',
     ],
-    dateOffered: 'July 12, 2026',
-    startDate: 'August 4, 2026',
-    salaryOffered: 'PHP 20,000 - 25,000 / month',
   },
   {
     title: 'Business Development Manager',
@@ -134,9 +125,6 @@ const ALL_JOBS: Job[] = [
       'Excellent leadership, analytical, and presentation skills',
       'Proven track record of meeting revenue targets',
     ],
-    dateOffered: 'July 8, 2026',
-    startDate: 'July 27, 2026',
-    salaryOffered: 'PHP 60,000 - 75,000 / month',
   },
   {
     title: 'Logistics Coordinator',
@@ -159,9 +147,6 @@ const ALL_JOBS: Job[] = [
       'Proficient in Microsoft Excel and logistics software',
       'Willing to be assigned to any depot location',
     ],
-    dateOffered: 'July 14, 2026',
-    startDate: 'August 11, 2026',
-    salaryOffered: 'PHP 24,000 - 30,000 / month',
   },
   {
     title: 'Accounting Staff',
@@ -184,9 +169,6 @@ const ALL_JOBS: Job[] = [
       'Proficient in MS Excel and accounting software (QuickBooks, SAP, or similar)',
       'Fresh graduates are welcome to apply',
     ],
-    dateOffered: 'July 15, 2026',
-    startDate: 'August 18, 2026',
-    salaryOffered: 'PHP 22,000 - 27,000 / month',
   },
   {
     title: 'Warehouse Supervisor',
@@ -209,9 +191,6 @@ const ALL_JOBS: Job[] = [
       'Familiarity with warehouse management systems (WMS)',
       'Physically fit and willing to work on-site',
     ],
-    dateOffered: 'July 9, 2026',
-    startDate: 'July 28, 2026',
-    salaryOffered: 'PHP 32,000 - 40,000 / month',
   },
   {
     title: 'Clerk',
@@ -496,20 +475,6 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
             ))}
           </div>
 
-          <div className="rounded-xl p-4 space-y-2.5" style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}>
-            <div className="flex items-center gap-2.5 text-sm">
-              <Clock className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
-              <span style={{ color: '#0B2A4A' }}><span className="font-semibold">Date Offered:</span> {job.dateOffered || 'To be provided upon final approval'}</span>
-            </div>
-            <div className="flex items-center gap-2.5 text-sm">
-              <Clock className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
-              <span style={{ color: '#0B2A4A' }}><span className="font-semibold">Start Date:</span> {job.startDate || 'To be discussed upon offer acceptance'}</span>
-            </div>
-            <div className="flex items-center gap-2.5 text-sm">
-              <Banknote className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
-              <span style={{ color: '#0B2A4A' }}><span className="font-semibold">Salary Offered:</span> {job.salaryOffered || 'Competitive, based on experience and qualifications'}</span>
-            </div>
-          </div>
           <div>
             <h3 className="text-sm font-semibold mb-2" style={{ color: '#0B2A4A' }}>
               About the Role
@@ -518,7 +483,6 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
               {job.summary}
             </p>
           </div>
-
 
           {[
             { title: 'Key Responsibilities', items: job.responsibilities },

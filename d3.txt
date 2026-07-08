@@ -1,0 +1,37 @@
+﻿// Mock "backend" for hiring-process schedules (Initial Interview, Department
+// Interview, etc). Uses localStorage instead of sessionStorage so that a
+// schedule set from one tab (e.g. an HR view) is visible from another tab
+// (e.g. the applicant dashboard) without needing a real server yet.
+//
+// When a real backend/API is ready, swap the localStorage calls in
+// readStepSchedule / writeStepSchedule for actual fetch() calls -- the
+// function signatures can stay the same, so nothing else needs to change.
+
+export type StepSchedule = {
+  date: string;
+  time: string;
+};
+
+const SCHEDULE_KEY_PREFIX = 'hiringSchedule_';
+
+export function readStepSchedule(stepKey: string): StepSchedule | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(SCHEDULE_KEY_PREFIX + stepKey);
+    if (!raw) return null;
+    return JSON.parse(raw) as StepSchedule;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStepSchedule(stepKey: string, schedule: StepSchedule) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(SCHEDULE_KEY_PREFIX + stepKey, JSON.stringify(schedule));
+}
+
+export function clearStepSchedule(stepKey: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(SCHEDULE_KEY_PREFIX + stepKey);
+}

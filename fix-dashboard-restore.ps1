@@ -1,3 +1,12 @@
+﻿# ============================================
+# FIX: Restore SRA dynamic step, rename Department Interview -> Interview,
+# and fix all remaining garbled characters in dashboard/page.tsx
+# ============================================
+
+$targetPath = "src\app\dashboard\page.tsx"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+$content = @'
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -662,3 +671,10 @@ export default function ApplicantDashboard() {
     </div>
   );
 }
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $targetPath), $content, $utf8NoBom)
+Write-Host "Updated: $targetPath" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Done! Naibalik na ang SRA step (Clerk/Checker lang), Interview na ang label, at naayos na ang mga natitirang garbled characters." -ForegroundColor Cyan

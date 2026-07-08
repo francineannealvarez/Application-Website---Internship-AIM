@@ -8,6 +8,19 @@ import { getUserApplication, mockPositions } from '@/lib/mockData';
 import { readDemoUser, readDemoApplication, type DemoUser } from '@/lib/demo-session';
 import { getDemoResumeFile, getDemoCoverLetterFile } from '@/lib/demo-files';
 
+// Long base64 data: URLs can be unreliable when opened directly in a new tab
+// (some browsers show a blank page). Converting to a blob: URL first fixes this.
+function dataUrlToBlobUrl(dataUrl: string): string {
+  const [header, base64] = dataUrl.split(',');
+  const mimeMatch = header.match(/data:(.*);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: mime });
+  return URL.createObjectURL(blob);
+}
+
 type DisplayApplication = {
   fullName: string;
   email: string;
@@ -76,8 +89,8 @@ export default function ApplicationPage() {
               submittedAtLabel: new Date(submitted.submittedAt).toLocaleDateString(),
               resumeFileName: submitted.resumeFileName,
               coverLetterFileName: submitted.coverLetterFileName,
-              resumeHref: resumeFileObj ? URL.createObjectURL(resumeFileObj) : null,
-              coverLetterHref: coverLetterFileObj ? URL.createObjectURL(coverLetterFileObj) : null,
+              resumeHref: resumeFileObj?.dataUrl ? dataUrlToBlobUrl(resumeFileObj.dataUrl) : null,
+              coverLetterHref: coverLetterFileObj?.dataUrl ? dataUrlToBlobUrl(coverLetterFileObj.dataUrl) : null,
             });
             setLoading(false);
             return;

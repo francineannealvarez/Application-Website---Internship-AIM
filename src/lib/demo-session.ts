@@ -10,6 +10,7 @@ export type DemoApplication = {
   email: string;
   phone: string;
   positionTitle: string;
+  employmentType?: string;
   resumeFileName: string;
   coverLetterFileName?: string | null;
   submittedAt: string; // ISO date string
