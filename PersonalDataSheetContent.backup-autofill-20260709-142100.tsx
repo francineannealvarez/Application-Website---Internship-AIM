@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { readDemoApplication } from '@/lib/demo-session';
 import {
   ChevronDown, Check, Clock, AlertCircle, User, Users, GraduationCap,
-  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info, Upload
+  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -481,16 +480,6 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
     reader.readAsDataURL(file);
   };
 
-  const [sketchImage, setSketchImage] = useState<string | null>(null);
-  const [sketchFileName, setSketchFileName] = useState('');
-  const sketchInputRef = useRef<HTMLInputElement>(null);
-  const handleSketchFile = (file: File) => {
-    setSketchFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setSketchImage(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
   const handleChildrenCountChange = (val: string) => {
     setChildrenCount(val);
     const n = val === '10+' ? 10 : parseInt(val || '0', 10);
@@ -504,14 +493,6 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const toggleArea = (area: string) => {
     setAreaOfAssignment((prev) => (prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]));
   };
-
-  useEffect(() => {
-    const app = readDemoApplication();
-    if (app) {
-      if (app.positionTitle) setPositionApplied(app.positionTitle);
-      if (app.submittedAt) setDateApplied(app.submittedAt.slice(0, 10));
-    }
-  }, []);
 
   const f = (v: string) => v.trim().length > 0;
   const eduAllNA = naEduLevels.length === 5;
@@ -719,18 +700,9 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
 
       <Section id="basic" icon={User} title="Basic & Contact Information" subtitle="Name, address, birth details, government IDs" openId={openId} setOpenId={setOpenId}>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Date Applied</Label>
-            <div className={inputCls} style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
-              {dateApplied || 'Auto-filled from your application'}
-            </div>
-          </div>
-          <div>
-            <Label>Position Applied For</Label>
-            <div className={inputCls} style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
-              {positionApplied || 'Auto-filled from your application'}
-            </div>
-          </div>
+          <TextField label="Date Applied" type="date" value={dateApplied} onChange={setDateApplied} />
+          <Select label="Position Applied For" value={positionApplied} onChange={setPositionApplied}
+            options={AVAILABLE_POSITIONS} placeholder="Select from currently available positions" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <TextField label="Last Name" value={lastName} onChange={setLastName} />
@@ -893,28 +865,26 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         ].map(({ label, state, set }) => {
           const isNA = naEduLevels.includes(label);
           return (
-            <div key={label} className="contents">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label>{label}</Label>
-                  <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
-                    setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
-                    if (checked) set({ school: '', years: '', degree: '', honors: '' });
-                  }} />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                </div>
+            <div key={label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label>{label}</Label>
+                <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
+                  setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
+                  if (checked) set({ school: '', years: '', degree: '', honors: '' });
+                }} />
               </div>
-              {label === 'College' && showWhyTookCourse && (
-                <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
-              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+              </div>
             </div>
           );
         })}
+        {showWhyTookCourse && (
+          <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
@@ -1108,56 +1078,35 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         <Checkbox label="I certify that the above information is true and correct to the best of my knowledge." checked={certify} onChange={setCertify} />
         <TextField label="Applicant's Signature (type your full name as e-signature)" value={eSignature} onChange={setESignature} placeholder="Juan Dela Cruz" />
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Label>Upload your Signature (image of your handwritten signature)</Label>
-            <input ref={signatureInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSignatureFile(file); }} />
-            {!signatureImage ? (
-              <button type="button" onClick={() => signatureInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Signature
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSignatureImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
+        <div>
+          <Label>Upload your Signature (image of your handwritten signature)</Label>
+          <input ref={signatureInputRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSignatureFile(file); }} />
+          {!signatureImage ? (
+            <button type="button" onClick={() => signatureInputRef.current?.click()}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
+              Upload Signature
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
               </div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <Label>Sketch of Your Residence (optional)</Label>
-            <input ref={sketchInputRef} type="file" accept="image/*,.pdf" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSketchFile(file); }} />
-            {!sketchImage ? (
-              <button type="button" onClick={() => sketchInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Sketch
+              <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
+              <button type="button" onClick={() => setSignatureImage(null)}
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
+                x
               </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={sketchImage} alt="Residence sketch" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => sketchInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSketchImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Section>
+
+      <div className="flex items-start gap-2.5 rounded-xl p-3 text-xs" style={{ backgroundColor: T.bg, color: T.gray }}>
+        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: T.faint }} />
+        <span>A sketch of your residence (going to/from AIMI or your area of assignment) may be requested separately by HR on a hard copy sheet.</span>
+      </div>
 
       {!canSubmit && missingSections.length > 0 && (
         <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', color: '#9F1239' }}>

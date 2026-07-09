@@ -893,28 +893,26 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         ].map(({ label, state, set }) => {
           const isNA = naEduLevels.includes(label);
           return (
-            <div key={label} className="contents">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label>{label}</Label>
-                  <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
-                    setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
-                    if (checked) set({ school: '', years: '', degree: '', honors: '' });
-                  }} />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                </div>
+            <div key={label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label>{label}</Label>
+                <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
+                  setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
+                  if (checked) set({ school: '', years: '', degree: '', honors: '' });
+                }} />
               </div>
-              {label === 'College' && showWhyTookCourse && (
-                <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
-              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+              </div>
             </div>
           );
         })}
+        {showWhyTookCourse && (
+          <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
@@ -1093,6 +1091,35 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         <YesNo label="To avail free lodging?" value={freeLodging} onChange={setFreeLodging} />
       </Section>
 
+      <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: T.bg }}>
+        <div className="flex items-start gap-2.5">
+          <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.faint }} />
+          <div>
+            <Label>Sketch of Your Residence (going to/from AIMI or your area of assignment)</Label>
+            <p className="text-xs mt-0.5" style={{ color: T.gray }}>Draw this on paper and upload a photo, or HR may request a hard copy separately.</p>
+          </div>
+        </div>
+        <input ref={sketchInputRef} type="file" accept="image/*,.pdf" className="hidden"
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSketchFile(file); }} />
+        {!sketchImage ? (
+          <button type="button" onClick={() => sketchInputRef.current?.click()}
+            className="w-full flex flex-col items-center justify-center gap-1.5 py-6 rounded-xl border-2 border-dashed hover:bg-black/[0.02] transition-colors">
+            <Upload className="w-5 h-5" style={{ color: T.faint }} />
+            <span className="text-xs font-medium" style={{ color: T.gray }}>Upload a photo of your residence sketch</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={sketchImage} alt="Residence sketch" className="h-20 object-contain rounded" />
+            <div className="flex-1 min-w-0 text-xs truncate" style={{ color: T.gray }}>{sketchFileName}</div>
+            <button type="button" onClick={() => { setSketchImage(null); setSketchFileName(''); }}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-white hover:bg-black/5 shrink-0" style={{ color: T.gray }}>
+              x
+            </button>
+          </div>
+        )}
+      </div>
+
       <Section id="certify" icon={PenLine} title="Certification & E-Signature" subtitle="Required before you can submit" openId={openId} setOpenId={setOpenId}>
         <div className="rounded-xl p-4 text-xs leading-relaxed space-y-3" style={{ backgroundColor: T.bg, color: T.gray }}>
           <p>
@@ -1108,54 +1135,28 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         <Checkbox label="I certify that the above information is true and correct to the best of my knowledge." checked={certify} onChange={setCertify} />
         <TextField label="Applicant's Signature (type your full name as e-signature)" value={eSignature} onChange={setESignature} placeholder="Juan Dela Cruz" />
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Label>Upload your Signature (image of your handwritten signature)</Label>
-            <input ref={signatureInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSignatureFile(file); }} />
-            {!signatureImage ? (
-              <button type="button" onClick={() => signatureInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Signature
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSignatureImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
+        <div>
+          <Label>Upload your Signature (image of your handwritten signature)</Label>
+          <input ref={signatureInputRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSignatureFile(file); }} />
+          {!signatureImage ? (
+            <button type="button" onClick={() => signatureInputRef.current?.click()}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
+              Upload Signature
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
               </div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <Label>Sketch of Your Residence (optional)</Label>
-            <input ref={sketchInputRef} type="file" accept="image/*,.pdf" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSketchFile(file); }} />
-            {!sketchImage ? (
-              <button type="button" onClick={() => sketchInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Sketch
+              <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
+              <button type="button" onClick={() => setSignatureImage(null)}
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
+                x
               </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={sketchImage} alt="Residence sketch" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => sketchInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSketchImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Section>
 

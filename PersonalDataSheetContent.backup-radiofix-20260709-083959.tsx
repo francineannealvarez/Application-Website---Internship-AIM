@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { readDemoApplication } from '@/lib/demo-session';
 import {
   ChevronDown, Check, Clock, AlertCircle, User, Users, GraduationCap,
-  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info, Upload
+  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -87,8 +86,8 @@ function YesNo({ label, value, onChange, detailValue, onDetailChange, detailLabe
           <button key={opt} type="button" onClick={() => onChange(opt)}
             className="flex items-center gap-1.5 text-sm font-medium"
             style={{ color: value === opt ? T.navy : T.gray }}>
-            <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2"
-              style={{ backgroundColor: value === opt ? T.cyan : 'transparent', borderColor: value === opt ? T.cyan : T.faint }}>
+            <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              style={{  backgroundColor: value === opt ? T.cyan : 'transparent' }}>
               {value === opt && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
             </span>
             {opt === 'yes' ? 'Yes' : 'No'}
@@ -106,8 +105,8 @@ function YesNo({ label, value, onChange, detailValue, onDetailChange, detailLabe
 function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button type="button" onClick={() => onChange(!checked)} className="flex items-center gap-2 text-sm" style={{ color: T.navy }}>
-      <span className="w-4 h-4 rounded flex items-center justify-center shrink-0 border-2"
-        style={{ backgroundColor: checked ? T.cyan : 'transparent', borderColor: checked ? T.cyan : T.faint }}>
+      <span className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+        style={{  backgroundColor: checked ? T.cyan : 'transparent' }}>
         {checked && <Check className="w-3 h-3 text-white" />}
       </span>
       {label}
@@ -307,9 +306,9 @@ type SimpleRow = { title: string; place: string; dates: string };
 type JobRow = {
   company: string; position: string; lastSalary: string; allowances: string; bonus: string; otherBenefits: string;
   majorFunctions: string; accomplishments: string; reasonForLeaving: string; immediateSuperior: string;
-  employmentDurationFrom: string; employmentDurationTo: string; contactNo: string;
+  employmentDuration: string; contactNo: string;
 };
-type RefRow = { name: string; occupation: string; telephone: string; address: string };
+type RefRow = { name: string; occupation: string; telephone: string };
 
 const emptyPerson: Person = { name: '', address: '', occupation: '', age: '' };
 const emptyChild: Child = { name: '', age: '' };
@@ -318,9 +317,9 @@ const emptyExam: ExamRow = { exam: '', date: '', rating: '' };
 const emptySimpleRow: SimpleRow = { title: '', place: '', dates: '' };
 const emptyJob: JobRow = {
   company: '', position: '', lastSalary: '', allowances: '', bonus: '', otherBenefits: '',
-  majorFunctions: '', accomplishments: '', reasonForLeaving: '', immediateSuperior: '', employmentDurationFrom: '', employmentDurationTo: '', contactNo: ''
+  majorFunctions: '', accomplishments: '', reasonForLeaving: '', immediateSuperior: '', employmentDuration: '', contactNo: ''
 };
-const emptyRef: RefRow = { name: '', occupation: '', telephone: '', address: '' };
+const emptyRef: RefRow = { name: '', occupation: '', telephone: '' };
 
 /* ─────────────────────────────────────────────────────────────────────────
    Main component
@@ -481,16 +480,6 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
     reader.readAsDataURL(file);
   };
 
-  const [sketchImage, setSketchImage] = useState<string | null>(null);
-  const [sketchFileName, setSketchFileName] = useState('');
-  const sketchInputRef = useRef<HTMLInputElement>(null);
-  const handleSketchFile = (file: File) => {
-    setSketchFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setSketchImage(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
   const handleChildrenCountChange = (val: string) => {
     setChildrenCount(val);
     const n = val === '10+' ? 10 : parseInt(val || '0', 10);
@@ -504,14 +493,6 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const toggleArea = (area: string) => {
     setAreaOfAssignment((prev) => (prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]));
   };
-
-  useEffect(() => {
-    const app = readDemoApplication();
-    if (app) {
-      if (app.positionTitle) setPositionApplied(app.positionTitle);
-      if (app.submittedAt) setDateApplied(app.submittedAt.slice(0, 10));
-    }
-  }, []);
 
   const f = (v: string) => v.trim().length > 0;
   const eduAllNA = naEduLevels.length === 5;
@@ -595,11 +576,11 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   // Work experience
   if (!naWorkExperience) {
     check('Work Experience', 'Each company (or mark N/A if no experience)',
-      jobs.every((j) => f(j.company) && f(j.position) && f(j.lastSalary) && f(j.majorFunctions) && f(j.accomplishments) && f(j.reasonForLeaving) && f(j.immediateSuperior) && f(j.employmentDurationFrom) && f(j.employmentDurationTo) && f(j.contactNo)));
+      jobs.every((j) => f(j.company) && f(j.position) && f(j.lastSalary) && f(j.majorFunctions) && f(j.accomplishments) && f(j.reasonForLeaving) && f(j.immediateSuperior) && f(j.employmentDuration) && f(j.contactNo)));
   }
 
   // References & emergency contact
-  if (!naCharRefs) check('References & Emergency Contact', 'Character References (or mark N/A)', charRefs.every((r) => f(r.name) && f(r.occupation) && f(r.telephone) && f(r.address)));
+  if (!naCharRefs) check('References & Emergency Contact', 'Character References (or mark N/A)', charRefs.every((r) => f(r.name) && f(r.occupation) && f(r.telephone)));
   check('References & Emergency Contact', 'Emergency Contact Name', f(emergencyName));
   check('References & Emergency Contact', 'Emergency Contact Relationship', f(emergencyRelationship));
   check('References & Emergency Contact', 'Emergency Contact Telephone', f(emergencyTelephone));
@@ -719,18 +700,9 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
 
       <Section id="basic" icon={User} title="Basic & Contact Information" subtitle="Name, address, birth details, government IDs" openId={openId} setOpenId={setOpenId}>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Date Applied</Label>
-            <div className={inputCls} style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
-              {dateApplied || 'Auto-filled from your application'}
-            </div>
-          </div>
-          <div>
-            <Label>Position Applied For</Label>
-            <div className={inputCls} style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
-              {positionApplied || 'Auto-filled from your application'}
-            </div>
-          </div>
+          <TextField label="Date Applied" type="date" value={dateApplied} onChange={setDateApplied} />
+          <Select label="Position Applied For" value={positionApplied} onChange={setPositionApplied}
+            options={AVAILABLE_POSITIONS} placeholder="Select from currently available positions" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <TextField label="Last Name" value={lastName} onChange={setLastName} />
@@ -820,7 +792,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
           <div className="flex flex-wrap gap-4">
             {['Single', 'Married', 'Widowed', 'Separated'].map((s) => (
               <button key={s} type="button" onClick={() => setCivilStatus(s)} className="flex items-center gap-1.5 text-sm font-medium" style={{ color: civilStatus === s ? T.navy : T.gray }}>
-                <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2" style={{ backgroundColor: civilStatus === s ? T.cyan : 'transparent', borderColor: civilStatus === s ? T.cyan : T.faint }}>
+                <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{  backgroundColor: civilStatus === s ? T.cyan : 'transparent' }}>
                   {civilStatus === s && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </span>
                 {s}
@@ -893,28 +865,26 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         ].map(({ label, state, set }) => {
           const isNA = naEduLevels.includes(label);
           return (
-            <div key={label} className="contents">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label>{label}</Label>
-                  <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
-                    setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
-                    if (checked) set({ school: '', years: '', degree: '', honors: '' });
-                  }} />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                </div>
+            <div key={label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label>{label}</Label>
+                <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
+                  setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
+                  if (checked) set({ school: '', years: '', degree: '', honors: '' });
+                }} />
               </div>
-              {label === 'College' && showWhyTookCourse && (
-                <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
-              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+              </div>
             </div>
           );
         })}
+        {showWhyTookCourse && (
+          <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
@@ -945,6 +915,15 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
           rows={govExams} setRows={setGovExams} empty={emptyExam}
           fields={[{ key: 'exam', label: 'Examination' }, { key: 'date', label: 'Date' }, { key: 'rating', label: 'Rating' }]} />
 
+        <NARepeatingSection label="Trainings and Seminars Attended" na={naTrainings} setNa={setNaTrainings}
+          rows={trainings} setRows={setTrainings} empty={emptySimpleRow}
+          fields={[{ key: 'title', label: 'Title/Topic' }, { key: 'place', label: 'Company' }, { key: 'dates', label: 'Inclusive Dates' }]} />
+
+        <NARepeatingSection label="Activities (School, Community, and Professional Organizations)" na={naActivities} setNa={setNaActivities}
+          rows={activities} setRows={setActivities} empty={emptySimpleRow}
+          fields={[{ key: 'title', label: 'Organization/Club' }, { key: 'place', label: 'Position(s) Held' }, { key: 'dates', label: 'Inclusive Dates' }]} />
+
+        <TextArea label="Special Skills, Qualifications, Talents and Hobbies" value={specialSkills} onChange={setSpecialSkills} rows={2} />
       </Section>
 
       <Section id="work" icon={Briefcase} title="Work Experience" subtitle="Add each previous company" openId={openId} setOpenId={setOpenId}>
@@ -976,14 +955,10 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
                   <input value={job.reasonForLeaving} onChange={(e) => updateJob(idx, { reasonForLeaving: e.target.value })} placeholder="Reason for Leaving" className={inputCls + ' text-xs'} style={inputStyle} />
                   <input value={job.immediateSuperior} onChange={(e) => updateJob(idx, { immediateSuperior: e.target.value })} placeholder="Immediate Superior" className={inputCls + ' text-xs'} style={inputStyle} />
                 </div>
-                <div>
-                  <Label>Employment Duration</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="date" value={job.employmentDurationFrom} onChange={(e) => updateJob(idx, { employmentDurationFrom: e.target.value })} className={inputCls + ' text-xs'} style={inputStyle} />
-                    <input type="date" value={job.employmentDurationTo} onChange={(e) => updateJob(idx, { employmentDurationTo: e.target.value })} className={inputCls + ' text-xs'} style={inputStyle} />
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={job.employmentDuration} onChange={(e) => updateJob(idx, { employmentDuration: e.target.value })} placeholder="Employment Duration" className={inputCls + ' text-xs'} style={inputStyle} />
+                  <input value={job.contactNo} onChange={(e) => updateJob(idx, { contactNo: e.target.value })} placeholder="Contact No." className={inputCls + ' text-xs'} style={inputStyle} />
                 </div>
-                <input value={job.contactNo} onChange={(e) => updateJob(idx, { contactNo: e.target.value })} placeholder="Contact No." className={inputCls + ' text-xs w-full'} style={inputStyle} />
               </div>
             ))}
             <button type="button" onClick={() => setJobs([...jobs, { ...emptyJob }])}
@@ -995,7 +970,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
       <Section id="refs" icon={Phone} title="References & Emergency Contact" subtitle="Character references and who to notify" openId={openId} setOpenId={setOpenId}>
         <NARepeatingSection label="Character References" na={naCharRefs} setNa={setNaCharRefs}
           rows={charRefs} setRows={setCharRefs} empty={emptyRef}
-          fields={[{ key: 'name', label: 'Name' }, { key: 'occupation', label: 'Occupation' }, { key: 'telephone', label: 'Telephone Number' }, { key: 'address', label: 'Exact Address' }]} />
+          fields={[{ key: 'name', label: 'Name' }, { key: 'occupation', label: 'Occupation' }, { key: 'telephone', label: 'Telephone Number' }]} />
         <div>
           <Label>Person(s) to be notified in case of emergency (please do not include relatives and present employer)</Label>
           <div className="grid grid-cols-2 gap-2">
@@ -1007,17 +982,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         </div>
       </Section>
 
-      <Section id="declarations" icon={Shield} title="Other Information & Declarations" subtitle="Trainings, activities, skills, loans, legal history, health, smoking" openId={openId} setOpenId={setOpenId}>
-        <NARepeatingSection label="Trainings and Seminars Attended" na={naTrainings} setNa={setNaTrainings}
-          rows={trainings} setRows={setTrainings} empty={emptySimpleRow}
-          fields={[{ key: 'title', label: 'Title/Topic' }, { key: 'place', label: 'Company' }, { key: 'dates', label: 'Inclusive Dates' }]} />
-
-        <NARepeatingSection label="Activities (School, Community, and Professional Organizations)" na={naActivities} setNa={setNaActivities}
-          rows={activities} setRows={setActivities} empty={emptySimpleRow}
-          fields={[{ key: 'title', label: 'Organization/Club' }, { key: 'place', label: 'Position(s) Held' }, { key: 'dates', label: 'Inclusive Dates' }]} />
-
-        <TextArea label="Special Skills, Qualifications, Talents and Hobbies" value={specialSkills} onChange={setSpecialSkills} rows={2} />
-
+      <Section id="declarations" icon={Shield} title="Other Information & Declarations" subtitle="Loans, legal history, health, smoking" openId={openId} setOpenId={setOpenId}>
         <YesNo label="Do you have any outstanding loans?" value={outstandingLoans} onChange={setOutstandingLoans} detailValue={outstandingLoansDetail} onDetailChange={setOutstandingLoansDetail} />
         <YesNo label="Have you ever been convicted of any offense or crime?" value={convicted} onChange={setConvicted} detailValue={convictedDetail} onDetailChange={setConvictedDetail} />
         <YesNo label="Have you undergone any surgery?" value={surgery} onChange={setSurgery} detailValue={surgeryDetail} onDetailChange={setSurgeryDetail} />
@@ -1108,56 +1073,35 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         <Checkbox label="I certify that the above information is true and correct to the best of my knowledge." checked={certify} onChange={setCertify} />
         <TextField label="Applicant's Signature (type your full name as e-signature)" value={eSignature} onChange={setESignature} placeholder="Juan Dela Cruz" />
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Label>Upload your Signature (image of your handwritten signature)</Label>
-            <input ref={signatureInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSignatureFile(file); }} />
-            {!signatureImage ? (
-              <button type="button" onClick={() => signatureInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Signature
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSignatureImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
+        <div>
+          <Label>Upload your Signature (image of your handwritten signature)</Label>
+          <input ref={signatureInputRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSignatureFile(file); }} />
+          {!signatureImage ? (
+            <button type="button" onClick={() => signatureInputRef.current?.click()}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
+              Upload Signature
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
               </div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <Label>Sketch of Your Residence (optional)</Label>
-            <input ref={sketchInputRef} type="file" accept="image/*,.pdf" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSketchFile(file); }} />
-            {!sketchImage ? (
-              <button type="button" onClick={() => sketchInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Sketch
+              <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
+              <button type="button" onClick={() => setSignatureImage(null)}
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
+                x
               </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={sketchImage} alt="Residence sketch" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => sketchInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSketchImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Section>
+
+      <div className="flex items-start gap-2.5 rounded-xl p-3 text-xs" style={{ backgroundColor: T.bg, color: T.gray }}>
+        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: T.faint }} />
+        <span>A sketch of your residence (going to/from AIMI or your area of assignment) may be requested separately by HR on a hard copy sheet.</span>
+      </div>
 
       {!canSubmit && missingSections.length > 0 && (
         <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', color: '#9F1239' }}>

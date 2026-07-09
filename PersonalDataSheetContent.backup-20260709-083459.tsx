@@ -1,15 +1,14 @@
-'use client';
+﻿'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { readDemoApplication } from '@/lib/demo-session';
+import { useState } from 'react';
 import {
   ChevronDown, Check, Clock, AlertCircle, User, Users, GraduationCap,
-  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info, Upload
+  Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Theme tokens — matches the rest of src/app/dashboard/page.tsx exactly
-   ───────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Theme tokens â€” matches the rest of src/app/dashboard/page.tsx exactly
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const T = {
   navy: '#0B2A4A',
   cyan: '#12B6D6',
@@ -26,9 +25,9 @@ function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Generic field primitives
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-semibold mb-1.5" style={{ color: T.navy }}>{children}</label>;
 }
@@ -87,8 +86,8 @@ function YesNo({ label, value, onChange, detailValue, onDetailChange, detailLabe
           <button key={opt} type="button" onClick={() => onChange(opt)}
             className="flex items-center gap-1.5 text-sm font-medium"
             style={{ color: value === opt ? T.navy : T.gray }}>
-            <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2"
-              style={{ backgroundColor: value === opt ? T.cyan : 'transparent', borderColor: value === opt ? T.cyan : T.faint }}>
+            <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              style={{  backgroundColor: value === opt ? T.cyan : 'transparent' }}>
               {value === opt && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
             </span>
             {opt === 'yes' ? 'Yes' : 'No'}
@@ -106,8 +105,8 @@ function YesNo({ label, value, onChange, detailValue, onDetailChange, detailLabe
 function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button type="button" onClick={() => onChange(!checked)} className="flex items-center gap-2 text-sm" style={{ color: T.navy }}>
-      <span className="w-4 h-4 rounded flex items-center justify-center shrink-0 border-2"
-        style={{ backgroundColor: checked ? T.cyan : 'transparent', borderColor: checked ? T.cyan : T.faint }}>
+      <span className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+        style={{  backgroundColor: checked ? T.cyan : 'transparent' }}>
         {checked && <Check className="w-3 h-3 text-white" />}
       </span>
       {label}
@@ -115,26 +114,16 @@ function Checkbox({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Accordion section wrapper
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Section({ id, icon: Icon, title, subtitle, openId, setOpenId, children }: {
   id: string; icon: React.ElementType; title: string; subtitle: string;
   openId: string | null; setOpenId: (id: string | null) => void; children: React.ReactNode;
 }) {
   const isOpen = openId === id;
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isOpen && sectionRef.current) {
-      setTimeout(() => {
-        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 80);
-    }
-  }, [isOpen]);
-
   return (
-    <div ref={sectionRef} className="rounded-xl overflow-hidden" style={{}}>
+    <div className="rounded-xl overflow-hidden" style={{}}>
       <button type="button" onClick={() => setOpenId(isOpen ? null : id)}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-black/[0.02] transition-colors">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: T.cyanBg }}>
@@ -155,9 +144,9 @@ function Section({ id, icon: Icon, title, subtitle, openId, setOpenId, children 
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Repeating row helpers
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RepeatingRows<T>({ rows, setRows, empty, fields }: {
   rows: T[]; setRows: (rows: T[]) => void; empty: T;
   fields: { key: keyof T; label: string; grow?: boolean }[];
@@ -226,50 +215,50 @@ function NAPersonSection({ label, na, setNa, state, setState, nameLabel = 'Name'
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Philippine address data & other dropdown option lists
-   Note: City/Municipality and Barangay stay as free text — the full PSGC
+   Note: City/Municipality and Barangay stay as free text â€” the full PSGC
    list (1,600+ cities/municipalities, 42,000+ barangays) is too large to
    embed here, but Region and Province are real dropdowns.
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const PH_REGIONS = [
-  'NCR – National Capital Region',
-  'CAR – Cordillera Administrative Region',
-  'Region I – Ilocos Region',
-  'Region II – Cagayan Valley',
-  'Region III – Central Luzon',
-  'Region IV-A – CALABARZON',
+  'NCR â€“ National Capital Region',
+  'CAR â€“ Cordillera Administrative Region',
+  'Region I â€“ Ilocos Region',
+  'Region II â€“ Cagayan Valley',
+  'Region III â€“ Central Luzon',
+  'Region IV-A â€“ CALABARZON',
   'MIMAROPA Region',
-  'Region V – Bicol Region',
-  'Region VI – Western Visayas',
-  'Region VII – Central Visayas',
-  'Region VIII – Eastern Visayas',
-  'Region IX – Zamboanga Peninsula',
-  'Region X – Northern Mindanao',
-  'Region XI – Davao Region',
-  'Region XII – SOCCSKSARGEN',
-  'Region XIII – Caraga',
-  'BARMM – Bangsamoro Autonomous Region',
+  'Region V â€“ Bicol Region',
+  'Region VI â€“ Western Visayas',
+  'Region VII â€“ Central Visayas',
+  'Region VIII â€“ Eastern Visayas',
+  'Region IX â€“ Zamboanga Peninsula',
+  'Region X â€“ Northern Mindanao',
+  'Region XI â€“ Davao Region',
+  'Region XII â€“ SOCCSKSARGEN',
+  'Region XIII â€“ Caraga',
+  'BARMM â€“ Bangsamoro Autonomous Region',
 ];
 
 const PH_PROVINCES_BY_REGION: Record<string, string[]> = {
-  'NCR – National Capital Region': ['Metro Manila'],
-  'CAR – Cordillera Administrative Region': ['Abra', 'Apayao', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province'],
-  'Region I – Ilocos Region': ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'],
-  'Region II – Cagayan Valley': ['Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino'],
-  'Region III – Central Luzon': ['Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales'],
-  'Region IV-A – CALABARZON': ['Batangas', 'Cavite', 'Laguna', 'Quezon', 'Rizal'],
+  'NCR â€“ National Capital Region': ['Metro Manila'],
+  'CAR â€“ Cordillera Administrative Region': ['Abra', 'Apayao', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province'],
+  'Region I â€“ Ilocos Region': ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'],
+  'Region II â€“ Cagayan Valley': ['Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino'],
+  'Region III â€“ Central Luzon': ['Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales'],
+  'Region IV-A â€“ CALABARZON': ['Batangas', 'Cavite', 'Laguna', 'Quezon', 'Rizal'],
   'MIMAROPA Region': ['Marinduque', 'Occidental Mindoro', 'Oriental Mindoro', 'Palawan', 'Romblon'],
-  'Region V – Bicol Region': ['Albay', 'Camarines Norte', 'Camarines Sur', 'Catanduanes', 'Masbate', 'Sorsogon'],
-  'Region VI – Western Visayas': ['Aklan', 'Antique', 'Capiz', 'Guimaras', 'Iloilo', 'Negros Occidental'],
-  'Region VII – Central Visayas': ['Bohol', 'Cebu', 'Negros Oriental', 'Siquijor'],
-  'Region VIII – Eastern Visayas': ['Biliran', 'Eastern Samar', 'Leyte', 'Northern Samar', 'Samar', 'Southern Leyte'],
-  'Region IX – Zamboanga Peninsula': ['Zamboanga del Norte', 'Zamboanga del Sur', 'Zamboanga Sibugay'],
-  'Region X – Northern Mindanao': ['Bukidnon', 'Camiguin', 'Lanao del Norte', 'Misamis Occidental', 'Misamis Oriental'],
-  'Region XI – Davao Region': ['Davao de Oro', 'Davao del Norte', 'Davao del Sur', 'Davao Occidental', 'Davao Oriental'],
-  'Region XII – SOCCSKSARGEN': ['Cotabato', 'Sarangani', 'South Cotabato', 'Sultan Kudarat'],
-  'Region XIII – Caraga': ['Agusan del Norte', 'Agusan del Sur', 'Dinagat Islands', 'Surigao del Norte', 'Surigao del Sur'],
-  'BARMM – Bangsamoro Autonomous Region': ['Basilan', 'Lanao del Sur', 'Maguindanao del Norte', 'Maguindanao del Sur', 'Sulu', 'Tawi-Tawi']
+  'Region V â€“ Bicol Region': ['Albay', 'Camarines Norte', 'Camarines Sur', 'Catanduanes', 'Masbate', 'Sorsogon'],
+  'Region VI â€“ Western Visayas': ['Aklan', 'Antique', 'Capiz', 'Guimaras', 'Iloilo', 'Negros Occidental'],
+  'Region VII â€“ Central Visayas': ['Bohol', 'Cebu', 'Negros Oriental', 'Siquijor'],
+  'Region VIII â€“ Eastern Visayas': ['Biliran', 'Eastern Samar', 'Leyte', 'Northern Samar', 'Samar', 'Southern Leyte'],
+  'Region IX â€“ Zamboanga Peninsula': ['Zamboanga del Norte', 'Zamboanga del Sur', 'Zamboanga Sibugay'],
+  'Region X â€“ Northern Mindanao': ['Bukidnon', 'Camiguin', 'Lanao del Norte', 'Misamis Occidental', 'Misamis Oriental'],
+  'Region XI â€“ Davao Region': ['Davao de Oro', 'Davao del Norte', 'Davao del Sur', 'Davao Occidental', 'Davao Oriental'],
+  'Region XII â€“ SOCCSKSARGEN': ['Cotabato', 'Sarangani', 'South Cotabato', 'Sultan Kudarat'],
+  'Region XIII â€“ Caraga': ['Agusan del Norte', 'Agusan del Sur', 'Dinagat Islands', 'Surigao del Norte', 'Surigao del Sur'],
+  'BARMM â€“ Bangsamoro Autonomous Region': ['Basilan', 'Lanao del Sur', 'Maguindanao del Norte', 'Maguindanao del Sur', 'Sulu', 'Tawi-Tawi']
 };
 
 const PH_MOBILE_RE = /^(09\d{9}|\+639\d{9})$/;
@@ -295,9 +284,9 @@ const HOW_LEARNED_OPTIONS = [
 
 const CHILDREN_COUNT_OPTIONS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Form state shape
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 type Person = { name: string; address: string; occupation: string; age: string };
 type Child = { name: string; age: string };
 type Relative = { name: string; positionDept: string; relationship: string };
@@ -307,9 +296,9 @@ type SimpleRow = { title: string; place: string; dates: string };
 type JobRow = {
   company: string; position: string; lastSalary: string; allowances: string; bonus: string; otherBenefits: string;
   majorFunctions: string; accomplishments: string; reasonForLeaving: string; immediateSuperior: string;
-  employmentDurationFrom: string; employmentDurationTo: string; contactNo: string;
+  employmentDuration: string; contactNo: string;
 };
-type RefRow = { name: string; occupation: string; telephone: string; address: string };
+type RefRow = { name: string; occupation: string; telephone: string };
 
 const emptyPerson: Person = { name: '', address: '', occupation: '', age: '' };
 const emptyChild: Child = { name: '', age: '' };
@@ -318,18 +307,18 @@ const emptyExam: ExamRow = { exam: '', date: '', rating: '' };
 const emptySimpleRow: SimpleRow = { title: '', place: '', dates: '' };
 const emptyJob: JobRow = {
   company: '', position: '', lastSalary: '', allowances: '', bonus: '', otherBenefits: '',
-  majorFunctions: '', accomplishments: '', reasonForLeaving: '', immediateSuperior: '', employmentDurationFrom: '', employmentDurationTo: '', contactNo: ''
+  majorFunctions: '', accomplishments: '', reasonForLeaving: '', immediateSuperior: '', employmentDuration: '', contactNo: ''
 };
-const emptyRef: RefRow = { name: '', occupation: '', telephone: '', address: '' };
+const emptyRef: RefRow = { name: '', occupation: '', telephone: '' };
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Main component
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
   const [submitted, setSubmitted] = useState(false);
   const [openId, setOpenId] = useState<string | null>('basic');
 
-  // ── Basic / contact (deduped: Date + Position + Salary Desired asked once) ──
+  // â”€â”€ Basic / contact (deduped: Date + Position + Salary Desired asked once) â”€â”€
   const [dateApplied, setDateApplied] = useState('');
   const [positionApplied, setPositionApplied] = useState('');
   const [desiredSalary, setDesiredSalary] = useState('');
@@ -368,17 +357,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [philhealth, setPhilhealth] = useState('');
   const [healthIssues, setHealthIssues] = useState('');
 
-  // -- Photo --
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [photoConfirmed, setPhotoConfirmed] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const handlePhotoFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => { setPhoto(reader.result as string); setPhotoConfirmed(false); };
-    reader.readAsDataURL(file);
-  };
-
-  // ── Family background ──
+  // â”€â”€ Family background â”€â”€
   const [father, setFather] = useState<Person>(emptyPerson);
   const [naFather, setNaFather] = useState(false);
   const [mother, setMother] = useState<Person>(emptyPerson);
@@ -394,7 +373,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [howLearnedOther, setHowLearnedOther] = useState('');
   const [referredBy, setReferredBy] = useState('');
 
-  // ── Education ──
+  // â”€â”€ Education â”€â”€
   const [eduElementary, setEduElementary] = useState<EduRow>({ school: '', years: '', degree: '', honors: '' });
   const [eduSecondary, setEduSecondary] = useState<EduRow>({ school: '', years: '', degree: '', honors: '' });
   const [eduCollege, setEduCollege] = useState<EduRow>({ school: '', years: '', degree: '', honors: '' });
@@ -415,22 +394,22 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [activities, setActivities] = useState<SimpleRow[]>([emptySimpleRow]);
   const [specialSkills, setSpecialSkills] = useState('');
 
-  // ── Work experience (up to 3 companies, per the form) ──
-  const [jobs, setJobs] = useState<JobRow[]>([emptyJob, emptyJob, emptyJob]);
+  // â”€â”€ Work experience (up to 3 companies, per the form) â”€â”€
+  const [jobs, setJobs] = useState<JobRow[]>([emptyJob, emptyJob]);
   const updateJob = (idx: number, patch: Partial<JobRow>) => {
     const next = [...jobs];
     next[idx] = { ...next[idx], ...patch };
     setJobs(next);
   };
 
-  // ── References & emergency contact ──
+  // â”€â”€ References & emergency contact â”€â”€
   const [charRefs, setCharRefs] = useState<RefRow[]>([emptyRef, emptyRef]);
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyRelationship, setEmergencyRelationship] = useState('');
   const [emergencyTelephone, setEmergencyTelephone] = useState('');
   const [emergencyAddress, setEmergencyAddress] = useState('');
 
-  // ── Declarations ──
+  // â”€â”€ Declarations â”€â”€
   const [outstandingLoans, setOutstandingLoans] = useState<'yes' | 'no' | ''>('');
   const [outstandingLoansDetail, setOutstandingLoansDetail] = useState('');
   const [convicted, setConvicted] = useState<'yes' | 'no' | ''>('');
@@ -446,7 +425,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [doYouSmoke, setDoYouSmoke] = useState<'yes' | 'no' | ''>('');
   const [howSoonStart, setHowSoonStart] = useState('');
 
-  // ── Personality profiling ──
+  // â”€â”€ Personality profiling â”€â”€
   const [resignTriggers, setResignTriggers] = useState('');
   const [stayFactors, setStayFactors] = useState('');
   const [handleStress, setHandleStress] = useState('');
@@ -461,7 +440,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [familyIssues, setFamilyIssues] = useState('');
   const [selfDescription, setSelfDescription] = useState('');
 
-  // ── Preferences ──
+  // â”€â”€ Preferences â”€â”€
   const [willingMonToSat, setWillingMonToSat] = useState('');
   const [willingShifting, setWillingShifting] = useState('');
   const [willingAnywhere, setWillingAnywhere] = useState('');
@@ -470,26 +449,9 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const [willingTraining, setWillingTraining] = useState('');
   const [freeLodging, setFreeLodging] = useState<'yes' | 'no' | ''>('');
 
-  // ── Certification ──
+  // â”€â”€ Certification â”€â”€
   const [certify, setCertify] = useState(false);
   const [eSignature, setESignature] = useState('');
-  const [signatureImage, setSignatureImage] = useState<string | null>(null);
-  const signatureInputRef = useRef<HTMLInputElement>(null);
-  const handleSignatureFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => setSignatureImage(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const [sketchImage, setSketchImage] = useState<string | null>(null);
-  const [sketchFileName, setSketchFileName] = useState('');
-  const sketchInputRef = useRef<HTMLInputElement>(null);
-  const handleSketchFile = (file: File) => {
-    setSketchFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setSketchImage(reader.result as string);
-    reader.readAsDataURL(file);
-  };
 
   const handleChildrenCountChange = (val: string) => {
     setChildrenCount(val);
@@ -505,14 +467,6 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
     setAreaOfAssignment((prev) => (prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]));
   };
 
-  useEffect(() => {
-    const app = readDemoApplication();
-    if (app) {
-      if (app.positionTitle) setPositionApplied(app.positionTitle);
-      if (app.submittedAt) setDateApplied(app.submittedAt.slice(0, 10));
-    }
-  }, []);
-
   const f = (v: string) => v.trim().length > 0;
   const eduAllNA = naEduLevels.length === 5;
   const showWhyTookCourse = !(naEduLevels.includes('College') || eduAllNA);
@@ -521,7 +475,6 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const check = (section: string, label: string, ok: boolean) => { if (!ok) missing.push({ section, label }); };
 
   // Basic & contact
-  check('Basic & Contact Information', 'Photo (2x2 ID picture)', !!photo && photoConfirmed);
   check('Basic & Contact Information', 'Date Applied', f(dateApplied));
   check('Basic & Contact Information', 'Position Applied For', f(positionApplied));
   check('Basic & Contact Information', 'Last Name', f(lastName));
@@ -595,11 +548,11 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   // Work experience
   if (!naWorkExperience) {
     check('Work Experience', 'Each company (or mark N/A if no experience)',
-      jobs.every((j) => f(j.company) && f(j.position) && f(j.lastSalary) && f(j.majorFunctions) && f(j.accomplishments) && f(j.reasonForLeaving) && f(j.immediateSuperior) && f(j.employmentDurationFrom) && f(j.employmentDurationTo) && f(j.contactNo)));
+      jobs.every((j) => f(j.company) && f(j.position) && f(j.lastSalary) && f(j.majorFunctions) && f(j.accomplishments) && f(j.reasonForLeaving) && f(j.immediateSuperior) && f(j.employmentDuration) && f(j.contactNo)));
   }
 
   // References & emergency contact
-  if (!naCharRefs) check('References & Emergency Contact', 'Character References (or mark N/A)', charRefs.every((r) => f(r.name) && f(r.occupation) && f(r.telephone) && f(r.address)));
+  if (!naCharRefs) check('References & Emergency Contact', 'Character References (or mark N/A)', charRefs.every((r) => f(r.name) && f(r.occupation) && f(r.telephone)));
   check('References & Emergency Contact', 'Emergency Contact Name', f(emergencyName));
   check('References & Emergency Contact', 'Emergency Contact Relationship', f(emergencyRelationship));
   check('References & Emergency Contact', 'Emergency Contact Telephone', f(emergencyTelephone));
@@ -629,7 +582,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   check('Personality Profiling', 'Strengths (all 3)', strengths.every(f));
   check('Personality Profiling', 'Areas for Improvement (all 3)', improvements.every(f));
   check('Personality Profiling', 'Top 5 Core Values (all 5)', coreValues.every(f));
-  check('Personality Profiling', '3–5 year plan', f(futurePlans));
+  check('Personality Profiling', '3â€“5 year plan', f(futurePlans));
   check('Personality Profiling', 'Parental/partner support', f(parentalSupport));
   check('Personality Profiling', 'Family medical condition', f(familyMedicalCondition));
   check('Personality Profiling', 'Family issues or disputes', f(familyIssues));
@@ -646,7 +599,6 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   // Certification
   check('Certification & E-Signature', 'Certification checkbox', certify);
   check('Certification & E-Signature', "Applicant's Signature", f(eSignature));
-  check('Certification & E-Signature', "Uploaded Signature Image", !!signatureImage);
 
   const canSubmit = missing.length === 0;
   const missingSections = Array.from(new Set(missing.map((m) => m.section)));
@@ -677,60 +629,11 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         <span>Please fill out this Personal Data Sheet completely and accurately. This is required before you can proceed to the Assessment stage.</span>
       </div>
 
-      <div className="rounded-xl p-4 flex items-center gap-4" style={{ backgroundColor: T.cyanBg }}>
-        <div className="w-24 h-24 rounded-xl overflow-hidden border-2 flex items-center justify-center shrink-0 bg-white" style={{ borderColor: T.cyanBorder }}>
-          {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt="Applicant 2x2 photo" className="w-full h-full object-cover" />
-          ) : (
-            <User className="w-8 h-8" style={{ color: T.faint }} />
-          )}
-        </div>
-        <div className="flex-1">
-          <Label>2x2 ID Photo</Label>
-          <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
-            onChange={(e) => { const file = e.target.files?.[0]; if (file) handlePhotoFile(file); }} />
-          {!photo ? (
-            <button type="button" onClick={() => photoInputRef.current?.click()}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border bg-white" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-              Upload Photo
-            </button>
-          ) : photoConfirmed ? (
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-                <Check className="w-3 h-3" /> Photo confirmed
-              </span>
-              <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setPhotoConfirmed(true)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ backgroundColor: T.cyan }}>
-                Use this photo
-              </button>
-              <button type="button" onClick={() => { setPhoto(null); setPhotoConfirmed(false); }}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-white hover:bg-black/5" style={{ color: T.gray }}>
-                x
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
       <Section id="basic" icon={User} title="Basic & Contact Information" subtitle="Name, address, birth details, government IDs" openId={openId} setOpenId={setOpenId}>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Date Applied</Label>
-            <div className={inputCls} style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
-              {dateApplied || 'Auto-filled from your application'}
-            </div>
-          </div>
-          <div>
-            <Label>Position Applied For</Label>
-            <div className={inputCls} style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
-              {positionApplied || 'Auto-filled from your application'}
-            </div>
-          </div>
+          <TextField label="Date Applied" type="date" value={dateApplied} onChange={setDateApplied} />
+          <Select label="Position Applied For" value={positionApplied} onChange={setPositionApplied}
+            options={AVAILABLE_POSITIONS} placeholder="Select from currently available positions" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <TextField label="Last Name" value={lastName} onChange={setLastName} />
@@ -776,7 +679,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
           </div>
           <input value={provStreet} onChange={(e) => setProvStreet(e.target.value)} placeholder="House No. / Street / Subdivision" className={inputCls + ' text-xs w-full'} style={inputStyle} />
         </div>
-        <p className="text-[11px] -mt-2" style={{ color: T.faint }}>City/Municipality and Barangay are typed manually — the full nationwide list (1,600+ cities/municipalities, 42,000+ barangays) isn't practical to embed as a dropdown.</p>
+        <p className="text-[11px] -mt-2" style={{ color: T.faint }}>City/Municipality and Barangay are typed manually â€” the full nationwide list (1,600+ cities/municipalities, 42,000+ barangays) isn't practical to embed as a dropdown.</p>
 
         <TextField label="How often do you visit your province?" value={howOftenVisit} onChange={setHowOftenVisit} />
         <TextField label="How many minutes travel time to area of assignment?" value={travelTime} onChange={setTravelTime} />
@@ -820,7 +723,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
           <div className="flex flex-wrap gap-4">
             {['Single', 'Married', 'Widowed', 'Separated'].map((s) => (
               <button key={s} type="button" onClick={() => setCivilStatus(s)} className="flex items-center gap-1.5 text-sm font-medium" style={{ color: civilStatus === s ? T.navy : T.gray }}>
-                <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2" style={{ backgroundColor: civilStatus === s ? T.cyan : 'transparent', borderColor: civilStatus === s ? T.cyan : T.faint }}>
+                <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{  backgroundColor: civilStatus === s ? T.cyan : 'transparent' }}>
                   {civilStatus === s && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </span>
                 {s}
@@ -893,28 +796,26 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         ].map(({ label, state, set }) => {
           const isNA = naEduLevels.includes(label);
           return (
-            <div key={label} className="contents">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label>{label}</Label>
-                  <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
-                    setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
-                    if (checked) set({ school: '', years: '', degree: '', honors: '' });
-                  }} />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (from–to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                  <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
-                </div>
+            <div key={label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label>{label}</Label>
+                <Checkbox label="N/A" checked={isNA} onChange={(checked) => {
+                  setNaEduLevels((prev) => checked ? [...prev, label] : prev.filter((l) => l !== label));
+                  if (checked) set({ school: '', years: '', degree: '', honors: '' });
+                }} />
               </div>
-              {label === 'College' && showWhyTookCourse && (
-                <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
-              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input value={state.school} disabled={isNA} onChange={(e) => set({ ...state, school: e.target.value })} placeholder="School and Address" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.years} disabled={isNA} onChange={(e) => set({ ...state, years: e.target.value })} placeholder="Years Attended (fromâ€“to)" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.degree} disabled={isNA} onChange={(e) => set({ ...state, degree: e.target.value })} placeholder="Degree/Major" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+                <input value={state.honors} disabled={isNA} onChange={(e) => set({ ...state, honors: e.target.value })} placeholder="Academic Honors" className={inputCls + ' text-xs disabled:opacity-40'} style={inputStyle} />
+              </div>
             </div>
           );
         })}
+        {showWhyTookCourse && (
+          <TextArea label="Why did you take up this course?" value={whyTookCourse} onChange={setWhyTookCourse} rows={2} />
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
@@ -945,10 +846,19 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
           rows={govExams} setRows={setGovExams} empty={emptyExam}
           fields={[{ key: 'exam', label: 'Examination' }, { key: 'date', label: 'Date' }, { key: 'rating', label: 'Rating' }]} />
 
+        <NARepeatingSection label="Trainings and Seminars Attended" na={naTrainings} setNa={setNaTrainings}
+          rows={trainings} setRows={setTrainings} empty={emptySimpleRow}
+          fields={[{ key: 'title', label: 'Title/Topic' }, { key: 'place', label: 'Company' }, { key: 'dates', label: 'Inclusive Dates' }]} />
+
+        <NARepeatingSection label="Activities (School, Community, and Professional Organizations)" na={naActivities} setNa={setNaActivities}
+          rows={activities} setRows={setActivities} empty={emptySimpleRow}
+          fields={[{ key: 'title', label: 'Organization/Club' }, { key: 'place', label: 'Position(s) Held' }, { key: 'dates', label: 'Inclusive Dates' }]} />
+
+        <TextArea label="Special Skills, Qualifications, Talents and Hobbies" value={specialSkills} onChange={setSpecialSkills} rows={2} />
       </Section>
 
       <Section id="work" icon={Briefcase} title="Work Experience" subtitle="Add each previous company" openId={openId} setOpenId={setOpenId}>
-        <Checkbox label="N/A — I have no prior work experience" checked={naWorkExperience} onChange={setNaWorkExperience} />
+        <Checkbox label="N/A â€” I have no prior work experience" checked={naWorkExperience} onChange={setNaWorkExperience} />
         {!naWorkExperience && (
           <>
             {jobs.map((job, idx) => (
@@ -976,14 +886,10 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
                   <input value={job.reasonForLeaving} onChange={(e) => updateJob(idx, { reasonForLeaving: e.target.value })} placeholder="Reason for Leaving" className={inputCls + ' text-xs'} style={inputStyle} />
                   <input value={job.immediateSuperior} onChange={(e) => updateJob(idx, { immediateSuperior: e.target.value })} placeholder="Immediate Superior" className={inputCls + ' text-xs'} style={inputStyle} />
                 </div>
-                <div>
-                  <Label>Employment Duration</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="date" value={job.employmentDurationFrom} onChange={(e) => updateJob(idx, { employmentDurationFrom: e.target.value })} className={inputCls + ' text-xs'} style={inputStyle} />
-                    <input type="date" value={job.employmentDurationTo} onChange={(e) => updateJob(idx, { employmentDurationTo: e.target.value })} className={inputCls + ' text-xs'} style={inputStyle} />
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={job.employmentDuration} onChange={(e) => updateJob(idx, { employmentDuration: e.target.value })} placeholder="Employment Duration" className={inputCls + ' text-xs'} style={inputStyle} />
+                  <input value={job.contactNo} onChange={(e) => updateJob(idx, { contactNo: e.target.value })} placeholder="Contact No." className={inputCls + ' text-xs'} style={inputStyle} />
                 </div>
-                <input value={job.contactNo} onChange={(e) => updateJob(idx, { contactNo: e.target.value })} placeholder="Contact No." className={inputCls + ' text-xs w-full'} style={inputStyle} />
               </div>
             ))}
             <button type="button" onClick={() => setJobs([...jobs, { ...emptyJob }])}
@@ -995,7 +901,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
       <Section id="refs" icon={Phone} title="References & Emergency Contact" subtitle="Character references and who to notify" openId={openId} setOpenId={setOpenId}>
         <NARepeatingSection label="Character References" na={naCharRefs} setNa={setNaCharRefs}
           rows={charRefs} setRows={setCharRefs} empty={emptyRef}
-          fields={[{ key: 'name', label: 'Name' }, { key: 'occupation', label: 'Occupation' }, { key: 'telephone', label: 'Telephone Number' }, { key: 'address', label: 'Exact Address' }]} />
+          fields={[{ key: 'name', label: 'Name' }, { key: 'occupation', label: 'Occupation' }, { key: 'telephone', label: 'Telephone Number' }]} />
         <div>
           <Label>Person(s) to be notified in case of emergency (please do not include relatives and present employer)</Label>
           <div className="grid grid-cols-2 gap-2">
@@ -1007,17 +913,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         </div>
       </Section>
 
-      <Section id="declarations" icon={Shield} title="Other Information & Declarations" subtitle="Trainings, activities, skills, loans, legal history, health, smoking" openId={openId} setOpenId={setOpenId}>
-        <NARepeatingSection label="Trainings and Seminars Attended" na={naTrainings} setNa={setNaTrainings}
-          rows={trainings} setRows={setTrainings} empty={emptySimpleRow}
-          fields={[{ key: 'title', label: 'Title/Topic' }, { key: 'place', label: 'Company' }, { key: 'dates', label: 'Inclusive Dates' }]} />
-
-        <NARepeatingSection label="Activities (School, Community, and Professional Organizations)" na={naActivities} setNa={setNaActivities}
-          rows={activities} setRows={setActivities} empty={emptySimpleRow}
-          fields={[{ key: 'title', label: 'Organization/Club' }, { key: 'place', label: 'Position(s) Held' }, { key: 'dates', label: 'Inclusive Dates' }]} />
-
-        <TextArea label="Special Skills, Qualifications, Talents and Hobbies" value={specialSkills} onChange={setSpecialSkills} rows={2} />
-
+      <Section id="declarations" icon={Shield} title="Other Information & Declarations" subtitle="Loans, legal history, health, smoking" openId={openId} setOpenId={setOpenId}>
         <YesNo label="Do you have any outstanding loans?" value={outstandingLoans} onChange={setOutstandingLoans} detailValue={outstandingLoansDetail} onDetailChange={setOutstandingLoansDetail} />
         <YesNo label="Have you ever been convicted of any offense or crime?" value={convicted} onChange={setConvicted} detailValue={convictedDetail} onDetailChange={setConvictedDetail} />
         <YesNo label="Have you undergone any surgery?" value={surgery} onChange={setSurgery} detailValue={surgeryDetail} onDetailChange={setSurgeryDetail} />
@@ -1107,57 +1003,12 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         </div>
         <Checkbox label="I certify that the above information is true and correct to the best of my knowledge." checked={certify} onChange={setCertify} />
         <TextField label="Applicant's Signature (type your full name as e-signature)" value={eSignature} onChange={setESignature} placeholder="Juan Dela Cruz" />
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Label>Upload your Signature (image of your handwritten signature)</Label>
-            <input ref={signatureInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSignatureFile(file); }} />
-            {!signatureImage ? (
-              <button type="button" onClick={() => signatureInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Signature
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSignatureImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <Label>Sketch of Your Residence (optional)</Label>
-            <input ref={sketchInputRef} type="file" accept="image/*,.pdf" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleSketchFile(file); }} />
-            {!sketchImage ? (
-              <button type="button" onClick={() => sketchInputRef.current?.click()}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border" style={{ color: T.cyan, borderColor: T.cyanBorder }}>
-                Upload Sketch
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-16 px-3 rounded-lg border flex items-center bg-white" style={{ borderColor: T.cyanBorder }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={sketchImage} alt="Residence sketch" className="h-12 object-contain" />
-                </div>
-                <button type="button" onClick={() => sketchInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSketchImage(null)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
-                  x
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </Section>
+
+      <div className="flex items-start gap-2.5 rounded-xl p-3 text-xs" style={{ backgroundColor: T.bg, color: T.gray }}>
+        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: T.faint }} />
+        <span>A sketch of your residence (going to/from AIMI or your area of assignment) may be requested separately by HR on a hard copy sheet.</span>
+      </div>
 
       {!canSubmit && missingSections.length > 0 && (
         <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', color: '#9F1239' }}>

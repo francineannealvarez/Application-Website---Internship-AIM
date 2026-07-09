@@ -20,7 +20,6 @@ import BackgroundCheckContent from '@/components/dashboard/BackgroundCheckConten
 import OnboardingContent from '@/components/dashboard/OnboardingContent';
 import SRAContent from '@/components/dashboard/SRAContent';
 import JobOfferContent from '@/components/dashboard/JobOfferContent';
-import StepGate from '@/components/dashboard/StepGate';
 import { readStepSchedule, type StepSchedule } from '@/lib/schedule-store';
 
 function cn(...classes: (string | undefined | false | null)[]) {
@@ -168,28 +167,23 @@ const REQUIREMENTS_MAIN = [
   { label: 'NBI Clearance', note: 'Original copy, issued within the last 3 months', Icon: Shield },
   { label: 'Police Clearance', note: 'Original copy', Icon: Shield },
   { label: 'Barangay Clearance', note: 'Original copy', Icon: Shield },
-  { label: 'ID Pictures (1x1 & 2x2)', note: 'White background', Icon: CreditCard },
+  { label: 'ID Pictures (1x1 & 2x2)', note: '4 pcs each, white background', Icon: CreditCard },
 ];
 
 const REQUIREMENTS_PREV_EMPLOYER = [
-  { label: 'BIR Form 2316', note: 'From your previous employer', Icon: FileText },
-  { label: 'Certificate of Employment', note: 'From your previous employer', Icon: FileText },
-  { label: 'Latest Pay Slip', note: 'At least 1 month, from your previous employer', Icon: FileText },
+  { label: 'BIR Form 2316', note: 'From your previous employer' },
+  { label: 'Certificate of Employment', note: 'From your previous employer' },
+  { label: 'Latest Pay Slip', note: 'At least 1 month, from your previous employer' },
   {
     label: 'SSS / Pag-IBIG Loan Status Form',
-    note: 'If with an existing SSS/Pag-IBIG loan: submit an updated Statement of Account (photocopy) with your payment arrangement. If without a loan: submit the printed online status confirming you have no existing loan.',
-    Icon: Hash
+    note: 'If with an existing SSS/Pag-IBIG loan: submit an updated Statement of Account (photocopy) with your payment arrangement. If without a loan: submit the printed online status confirming you have no existing loan.'
   },
 ];
 
 const REQUIREMENTS_BDO = [
-  { label: '1x1 ID Picture', note: 'White background', Icon: CreditCard },
-  { label: 'Photocopy of 2 Different Government-Issued IDs', note: 'Or an original Police Clearance', Icon: Shield },
+  { label: '1x1 ID Picture', note: '2 pcs' },
+  { label: 'Photocopy of 2 Different Government-Issued IDs', note: 'Or an original Police Clearance' },
 ];
-
-const REQUIREMENTS_PREV_EMPLOYER_START = REQUIREMENTS_MAIN.length;
-const REQUIREMENTS_BDO_START = REQUIREMENTS_MAIN.length + REQUIREMENTS_PREV_EMPLOYER.length;
-const REQUIREMENTS_TOTAL = REQUIREMENTS_MAIN.length + REQUIREMENTS_PREV_EMPLOYER.length + REQUIREMENTS_BDO.length;
 
 const GUIDES: { id: string; title: string; steps: string[]; note?: string; link?: { label: string; href: string }; extraList?: { heading: string; items: string[] } }[] = [
   {
@@ -462,25 +456,29 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
 
       <ReqCollapsible title="Additional Requirements - If You Previously Worked Elsewhere" subtitle="Only applicable if you have prior employment">
         <div className="space-y-2">
-          {REQUIREMENTS_PREV_EMPLOYER.map((r, idx) => {
-            const globalIdx = REQUIREMENTS_PREV_EMPLOYER_START + idx;
-            return (
-              <RequirementRow key={idx} label={r.label} note={r.note} Icon={r.Icon}
-                status={docStatuses[globalIdx]} file={docFiles[globalIdx]} onUpload={(file) => onDocUpload(globalIdx, file)} />
-            );
-          })}
+          {REQUIREMENTS_PREV_EMPLOYER.map((r, idx) => (
+            <div key={idx} className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#F7F9FA' }}>
+              <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: '#9BAAB8' }} />
+              <div className="min-w-0">
+                <div className="text-sm font-medium" style={{ color: '#0B2A4A' }}>{r.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>{r.note}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </ReqCollapsible>
 
       <ReqCollapsible title="Additional Requirements - BDO Payroll Account Application" subtitle="Only applicable when opening a BDO account">
         <div className="space-y-2">
-          {REQUIREMENTS_BDO.map((r, idx) => {
-            const globalIdx = REQUIREMENTS_BDO_START + idx;
-            return (
-              <RequirementRow key={idx} label={r.label} note={r.note} Icon={r.Icon}
-                status={docStatuses[globalIdx]} file={docFiles[globalIdx]} onUpload={(file) => onDocUpload(globalIdx, file)} />
-            );
-          })}
+          {REQUIREMENTS_BDO.map((r, idx) => (
+            <div key={idx} className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#F7F9FA' }}>
+              <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: '#9BAAB8' }} />
+              <div className="min-w-0">
+                <div className="text-sm font-medium" style={{ color: '#0B2A4A' }}>{r.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>{r.note}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </ReqCollapsible>
 
@@ -493,8 +491,8 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
 
       <div className="rounded-xl px-5 py-5 space-y-4" style={{ backgroundColor: '#EEF9FB' }}>
         <div className="flex items-start gap-3"><Calendar className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Deadline</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">August 5, 2025</div></div></div>
-        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">Arvin International Marketing Inc. — 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City</div></div></div>
-        <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">8:00 AM - 6:00 PM, Monday to Friday</div></div></div>
+        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">HR Office, Ground Floor, Arvin HQ, BGC Taguig</div></div></div>
+        <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">9:00 AM - 5:00 PM, Monday to Friday</div></div></div>
       </div>
 
       {isCurrent && (
@@ -506,7 +504,7 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
   );
 }
 
-function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete, applicantName, onWithdraw }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void;  applicantName: string; onWithdraw: (reason: string) => void; }) {
+function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete, applicantName }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void;  applicantName: string; }) {
   const totalSteps = steps.length;
   const [expandedStep, setExpandedStep] = useState<number | null>(completedSteps < totalSteps ? completedSteps : null);
   const handleRowClick = (idx: number) => { if (idx > completedSteps) return; setExpandedStep(prev => prev === idx ? null : idx); };
@@ -562,33 +560,21 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
               </div>
               <div className="px-4 pb-4 border-t border-[#E5E9EC]/80 animate-fade-slide-up">
                 {step.key === 'initial' ? (
-                  <StepGate stepLabel="Initial Interview" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <StepDetailContent stepIdx={0} isCurrent={isCurrent} />}
-                  </StepGate>
+                  <StepDetailContent stepIdx={0} isCurrent={isCurrent} />
                 ) : step.key === 'pds' ? (
                   <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'sri' ? (
-                  <StepGate stepLabel="SRA (Verbal Test)" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {(markSubmitted) => <SRAContent isCurrent={isCurrent} onSubmit={markSubmitted} />}
-                  </StepGate>
+                  <SRAContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'assessment' ? (
                   <AssessmentContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'background' ? (
-                  <StepGate stepLabel="Character & Background Check" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {(markSubmitted) => <BackgroundCheckContent isCurrent={isCurrent} onSubmit={markSubmitted} />}
-                  </StepGate>
+                  <BackgroundCheckContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'department' ? (
-                  <StepGate stepLabel="Final Interview" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} />}
-                  </StepGate>
+                  <StepDetailContent stepIdx={1} isCurrent={isCurrent} />
                 ) : step.key === 'joboffer' ? (
-                  <StepGate stepLabel="Job Offer" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} />}
-                  </StepGate>
+                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} />
                 ) : step.key === 'requirements' ? (
-                  <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />}
-                  </StepGate>
+                  <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />
                 ) : (
                   <OnboardingContent isCurrent={isCurrent} />
                 )}
@@ -655,17 +641,10 @@ export default function ApplicantDashboard() {
   const [applicationStage, setApplicationStage] = useState(0);
   const [showHiringProcess, setShowHiringProcess] = useState(false);
   const [hiringCompletedSteps, setHiringCompletedSteps] = useState(0);
-  const [docStatuses, setDocStatuses] = useState<DocStatus[]>(Array(REQUIREMENTS_TOTAL).fill('Pending'));
-  const [docFiles, setDocFiles] = useState<(StoredReqFile | null)[]>(Array(REQUIREMENTS_TOTAL).fill(null));
+  const [docStatuses, setDocStatuses] = useState<DocStatus[]>(Array(REQUIREMENTS_MAIN.length).fill('Pending'));
+  const [docFiles, setDocFiles] = useState<(StoredReqFile | null)[]>(Array(REQUIREMENTS_MAIN.length).fill(null));
   const [modalOpen, setModalOpen] = useState(false);
   const [congratsOpen, setCongratsOpen] = useState(false);
-  const [withdrawn, setWithdrawn] = useState(false);
-  const [withdrawReason, setWithdrawReason] = useState('');
-
-  const handleWithdraw = (reason: string) => {
-    setWithdrawReason(reason);
-    setWithdrawn(true);
-  };
 
   useEffect(() => {
     if (status === 'unauthenticated' && !demoUser) {
@@ -687,7 +666,7 @@ export default function ApplicantDashboard() {
     setHiringCompletedSteps(prev => {
       const next = Math.min(prev + 1, steps.length);
       if (next === steps.length) {
-        setDocStatuses(Array(REQUIREMENTS_TOTAL).fill('Submitted'));
+        setDocStatuses(Array(REQUIREMENTS_MAIN.length).fill('Submitted'));
         setCongratsOpen(true);
       }
       return next;
@@ -736,14 +715,8 @@ export default function ApplicantDashboard() {
             <p className="mb-4" style={{ color: '#6B7A8D' }}>{"You haven't submitted an application yet."}</p>
             <Link href="/apply" className="inline-block px-6 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Start Your Application</Link>
           </div>
-        ) : withdrawn ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-[#E5E9EC] p-8 text-center animate-fade-slide-up delay-1 space-y-3">
-            <p className="text-lg font-bold" style={{ color: '#0B2A4A' }}>Your application has been withdrawn.</p>
-            <p className="text-sm" style={{ color: '#6B7A8D' }}>Reason provided: {withdrawReason}</p>
-            <p className="text-sm" style={{ color: '#6B7A8D' }}>Thank you for your time and interest in Arvin International Marketing Inc. We hope to see your application again in the future.</p>
-          </div>
         ) : showHiringProcess ? (
-          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} applicantName={name} onWithdraw={handleWithdraw} />
+          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} applicantName={name} />
         ) : (
           <ApplicationStatusCard stage={applicationStage} onContinue={() => setModalOpen(true)} setApplicationStage={setApplicationStage} />
         )}

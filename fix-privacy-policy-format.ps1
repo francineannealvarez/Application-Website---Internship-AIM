@@ -1,3 +1,12 @@
+﻿# ============================================
+# FIX: Privacy Policy modal - improved format with icons per section
+# and clearer visual hierarchy, plus added missing "Right to be Informed"
+# ============================================
+
+$targetPath = "src\app\apply\page.tsx"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+$content = @'
 'use client';
 
 import { useState, useRef, useCallback } from "react";
@@ -655,3 +664,10 @@ const pageStyle: React.CSSProperties = {
 const bgStyle: React.CSSProperties = {
   backgroundColor: BG_LIGHT,
 };
+
+'@
+[System.IO.File]::WriteAllText((Join-Path $PWD $targetPath), $content, $utf8NoBom)
+Write-Host "Updated: $targetPath" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Done! Ang Privacy Policy modal ay may icon na ngayon sa bawat section, mas malinaw na hierarchy, at nadagdagan ng Right to be Informed sa Your Rights section." -ForegroundColor Cyan

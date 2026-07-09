@@ -1,3 +1,4 @@
+===== .\src\app\dashboard\page.tsx =====
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -20,7 +21,6 @@ import BackgroundCheckContent from '@/components/dashboard/BackgroundCheckConten
 import OnboardingContent from '@/components/dashboard/OnboardingContent';
 import SRAContent from '@/components/dashboard/SRAContent';
 import JobOfferContent from '@/components/dashboard/JobOfferContent';
-import StepGate from '@/components/dashboard/StepGate';
 import { readStepSchedule, type StepSchedule } from '@/lib/schedule-store';
 
 function cn(...classes: (string | undefined | false | null)[]) {
@@ -168,28 +168,23 @@ const REQUIREMENTS_MAIN = [
   { label: 'NBI Clearance', note: 'Original copy, issued within the last 3 months', Icon: Shield },
   { label: 'Police Clearance', note: 'Original copy', Icon: Shield },
   { label: 'Barangay Clearance', note: 'Original copy', Icon: Shield },
-  { label: 'ID Pictures (1x1 & 2x2)', note: 'White background', Icon: CreditCard },
+  { label: 'ID Pictures (1x1 & 2x2)', note: '4 pcs each, white background', Icon: CreditCard },
 ];
 
 const REQUIREMENTS_PREV_EMPLOYER = [
-  { label: 'BIR Form 2316', note: 'From your previous employer', Icon: FileText },
-  { label: 'Certificate of Employment', note: 'From your previous employer', Icon: FileText },
-  { label: 'Latest Pay Slip', note: 'At least 1 month, from your previous employer', Icon: FileText },
+  { label: 'BIR Form 2316', note: 'From your previous employer' },
+  { label: 'Certificate of Employment', note: 'From your previous employer' },
+  { label: 'Latest Pay Slip', note: 'At least 1 month, from your previous employer' },
   {
     label: 'SSS / Pag-IBIG Loan Status Form',
-    note: 'If with an existing SSS/Pag-IBIG loan: submit an updated Statement of Account (photocopy) with your payment arrangement. If without a loan: submit the printed online status confirming you have no existing loan.',
-    Icon: Hash
+    note: 'If with an existing SSS/Pag-IBIG loan: submit an updated Statement of Account (photocopy) with your payment arrangement. If without a loan: submit the printed online status confirming you have no existing loan.'
   },
 ];
 
 const REQUIREMENTS_BDO = [
-  { label: '1x1 ID Picture', note: 'White background', Icon: CreditCard },
-  { label: 'Photocopy of 2 Different Government-Issued IDs', note: 'Or an original Police Clearance', Icon: Shield },
+  { label: '1x1 ID Picture', note: '2 pcs' },
+  { label: 'Photocopy of 2 Different Government-Issued IDs', note: 'Or an original Police Clearance' },
 ];
-
-const REQUIREMENTS_PREV_EMPLOYER_START = REQUIREMENTS_MAIN.length;
-const REQUIREMENTS_BDO_START = REQUIREMENTS_MAIN.length + REQUIREMENTS_PREV_EMPLOYER.length;
-const REQUIREMENTS_TOTAL = REQUIREMENTS_MAIN.length + REQUIREMENTS_PREV_EMPLOYER.length + REQUIREMENTS_BDO.length;
 
 const GUIDES: { id: string; title: string; steps: string[]; note?: string; link?: { label: string; href: string }; extraList?: { heading: string; items: string[] } }[] = [
   {
@@ -462,25 +457,29 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
 
       <ReqCollapsible title="Additional Requirements - If You Previously Worked Elsewhere" subtitle="Only applicable if you have prior employment">
         <div className="space-y-2">
-          {REQUIREMENTS_PREV_EMPLOYER.map((r, idx) => {
-            const globalIdx = REQUIREMENTS_PREV_EMPLOYER_START + idx;
-            return (
-              <RequirementRow key={idx} label={r.label} note={r.note} Icon={r.Icon}
-                status={docStatuses[globalIdx]} file={docFiles[globalIdx]} onUpload={(file) => onDocUpload(globalIdx, file)} />
-            );
-          })}
+          {REQUIREMENTS_PREV_EMPLOYER.map((r, idx) => (
+            <div key={idx} className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#F7F9FA' }}>
+              <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: '#9BAAB8' }} />
+              <div className="min-w-0">
+                <div className="text-sm font-medium" style={{ color: '#0B2A4A' }}>{r.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>{r.note}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </ReqCollapsible>
 
       <ReqCollapsible title="Additional Requirements - BDO Payroll Account Application" subtitle="Only applicable when opening a BDO account">
         <div className="space-y-2">
-          {REQUIREMENTS_BDO.map((r, idx) => {
-            const globalIdx = REQUIREMENTS_BDO_START + idx;
-            return (
-              <RequirementRow key={idx} label={r.label} note={r.note} Icon={r.Icon}
-                status={docStatuses[globalIdx]} file={docFiles[globalIdx]} onUpload={(file) => onDocUpload(globalIdx, file)} />
-            );
-          })}
+          {REQUIREMENTS_BDO.map((r, idx) => (
+            <div key={idx} className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#F7F9FA' }}>
+              <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: '#9BAAB8' }} />
+              <div className="min-w-0">
+                <div className="text-sm font-medium" style={{ color: '#0B2A4A' }}>{r.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>{r.note}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </ReqCollapsible>
 
@@ -493,8 +492,8 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
 
       <div className="rounded-xl px-5 py-5 space-y-4" style={{ backgroundColor: '#EEF9FB' }}>
         <div className="flex items-start gap-3"><Calendar className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Deadline</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">August 5, 2025</div></div></div>
-        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">Arvin International Marketing Inc. — 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City</div></div></div>
-        <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">8:00 AM - 6:00 PM, Monday to Friday</div></div></div>
+        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">HR Office, Ground Floor, Arvin HQ, BGC Taguig</div></div></div>
+        <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">9:00 AM - 5:00 PM, Monday to Friday</div></div></div>
       </div>
 
       {isCurrent && (
@@ -506,7 +505,7 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
   );
 }
 
-function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete, applicantName, onWithdraw }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void;  applicantName: string; onWithdraw: (reason: string) => void; }) {
+function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete, applicantName }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void;  applicantName: string; }) {
   const totalSteps = steps.length;
   const [expandedStep, setExpandedStep] = useState<number | null>(completedSteps < totalSteps ? completedSteps : null);
   const handleRowClick = (idx: number) => { if (idx > completedSteps) return; setExpandedStep(prev => prev === idx ? null : idx); };
@@ -562,33 +561,21 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
               </div>
               <div className="px-4 pb-4 border-t border-[#E5E9EC]/80 animate-fade-slide-up">
                 {step.key === 'initial' ? (
-                  <StepGate stepLabel="Initial Interview" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <StepDetailContent stepIdx={0} isCurrent={isCurrent} />}
-                  </StepGate>
+                  <StepDetailContent stepIdx={0} isCurrent={isCurrent} />
                 ) : step.key === 'pds' ? (
                   <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'sri' ? (
-                  <StepGate stepLabel="SRA (Verbal Test)" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {(markSubmitted) => <SRAContent isCurrent={isCurrent} onSubmit={markSubmitted} />}
-                  </StepGate>
+                  <SRAContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'assessment' ? (
                   <AssessmentContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'background' ? (
-                  <StepGate stepLabel="Character & Background Check" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {(markSubmitted) => <BackgroundCheckContent isCurrent={isCurrent} onSubmit={markSubmitted} />}
-                  </StepGate>
+                  <BackgroundCheckContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'department' ? (
-                  <StepGate stepLabel="Final Interview" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} />}
-                  </StepGate>
+                  <StepDetailContent stepIdx={1} isCurrent={isCurrent} />
                 ) : step.key === 'joboffer' ? (
-                  <StepGate stepLabel="Job Offer" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} />}
-                  </StepGate>
+                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} />
                 ) : step.key === 'requirements' ? (
-                  <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />}
-                  </StepGate>
+                  <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />
                 ) : (
                   <OnboardingContent isCurrent={isCurrent} />
                 )}
@@ -655,17 +642,10 @@ export default function ApplicantDashboard() {
   const [applicationStage, setApplicationStage] = useState(0);
   const [showHiringProcess, setShowHiringProcess] = useState(false);
   const [hiringCompletedSteps, setHiringCompletedSteps] = useState(0);
-  const [docStatuses, setDocStatuses] = useState<DocStatus[]>(Array(REQUIREMENTS_TOTAL).fill('Pending'));
-  const [docFiles, setDocFiles] = useState<(StoredReqFile | null)[]>(Array(REQUIREMENTS_TOTAL).fill(null));
+  const [docStatuses, setDocStatuses] = useState<DocStatus[]>(Array(REQUIREMENTS_MAIN.length).fill('Pending'));
+  const [docFiles, setDocFiles] = useState<(StoredReqFile | null)[]>(Array(REQUIREMENTS_MAIN.length).fill(null));
   const [modalOpen, setModalOpen] = useState(false);
   const [congratsOpen, setCongratsOpen] = useState(false);
-  const [withdrawn, setWithdrawn] = useState(false);
-  const [withdrawReason, setWithdrawReason] = useState('');
-
-  const handleWithdraw = (reason: string) => {
-    setWithdrawReason(reason);
-    setWithdrawn(true);
-  };
 
   useEffect(() => {
     if (status === 'unauthenticated' && !demoUser) {
@@ -687,7 +667,7 @@ export default function ApplicantDashboard() {
     setHiringCompletedSteps(prev => {
       const next = Math.min(prev + 1, steps.length);
       if (next === steps.length) {
-        setDocStatuses(Array(REQUIREMENTS_TOTAL).fill('Submitted'));
+        setDocStatuses(Array(REQUIREMENTS_MAIN.length).fill('Submitted'));
         setCongratsOpen(true);
       }
       return next;
@@ -736,14 +716,8 @@ export default function ApplicantDashboard() {
             <p className="mb-4" style={{ color: '#6B7A8D' }}>{"You haven't submitted an application yet."}</p>
             <Link href="/apply" className="inline-block px-6 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Start Your Application</Link>
           </div>
-        ) : withdrawn ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-[#E5E9EC] p-8 text-center animate-fade-slide-up delay-1 space-y-3">
-            <p className="text-lg font-bold" style={{ color: '#0B2A4A' }}>Your application has been withdrawn.</p>
-            <p className="text-sm" style={{ color: '#6B7A8D' }}>Reason provided: {withdrawReason}</p>
-            <p className="text-sm" style={{ color: '#6B7A8D' }}>Thank you for your time and interest in Arvin International Marketing Inc. We hope to see your application again in the future.</p>
-          </div>
         ) : showHiringProcess ? (
-          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} applicantName={name} onWithdraw={handleWithdraw} />
+          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} applicantName={name} />
         ) : (
           <ApplicationStatusCard stage={applicationStage} onContinue={() => setModalOpen(true)} setApplicationStage={setApplicationStage} />
         )}
@@ -754,3 +728,625 @@ export default function ApplicantDashboard() {
     </div>
   );
 }
+
+
+
+===== .\src\components\dashboard\OnboardingContent.tsx =====
+'use client';
+
+import { PartyPopper, Calendar, MapPin, ClipboardList, CheckCircle2 } from 'lucide-react';
+
+const ONBOARDING_ITEMS = [
+  'Valid government-issued ID (original and photocopy)',
+  '2x2 ID pictures (2 copies, white background)',
+  'Bank account details for payroll enrollment',
+  'Signed employment contract (provided on-site)',
+];
+
+export default function OnboardingContent({ isCurrent }: { isCurrent: boolean }) {
+  return (
+    <div className="space-y-4 pt-3">
+      <div
+        className="rounded-xl p-5 flex items-start gap-3"
+        style={{ backgroundColor: '#EEF9FB'}}
+      >
+        <PartyPopper className="w-6 h-6 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+        <div>
+          <p className="text-base font-bold" style={{ color: '#0B2A4A' }}>
+            Welcome to the Arvin Family!
+          </p>
+          <p className="text-sm mt-1" style={{ color: '#6B7A8D' }}>
+            Congratulations on completing the hiring process! We are excited to have you join our team. Please see
+            your onboarding and orientation details below.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2.5 text-sm text-[#0B2A4A]">
+        <Calendar className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+        <span>
+          <span className="font-semibold">Orientation Date:</span>{' '}
+          <span style={{ color: '#6B7A8D' }}>August 4, 2026 at 8:00 AM</span>
+        </span>
+      </div>
+
+      <div className="flex items-start gap-2.5 text-sm text-[#0B2A4A]">
+        <MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+        <span style={{ color: '#6B7A8D' }}>
+          Arvin International Marketing Inc. — 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal
+          Ave., Brgy. 76, Pasay City
+        </span>
+      </div>
+
+      <div className="rounded-xl p-4" style={{ backgroundColor: '#F7F9FA'}}>
+        <div className="flex items-center gap-2 mb-3">
+          <ClipboardList className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+          <p className="text-sm font-semibold" style={{ color: '#0B2A4A' }}>
+            What to Bring on Orientation Day
+          </p>
+        </div>
+        <ul className="flex flex-col gap-2">
+          {ONBOARDING_ITEMS.map((item) => (
+            <li key={item} className="flex items-start gap-2.5 text-sm" style={{ color: '#6B7A8D' }}>
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {isCurrent && (
+        <div
+          className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm"
+          style={{ backgroundColor: '#F7F9FA', color: '#6B7A8D' }}
+        >
+          <PartyPopper className="w-4 h-4 shrink-0" style={{ color: '#9BAAB8' }} />
+          <span>We look forward to seeing you on your first day!</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+===== .\src\components\dashboard\SRAContent.tsx =====
+'use client';
+
+import { useState, useRef, useCallback } from 'react';
+import { Check, Clock, AlertCircle, FileText, ExternalLink, ClipboardList, Upload, X } from 'lucide-react';
+
+const T = {
+  navy: '#0B2A4A',
+  cyan: '#12B6D6',
+  gray: '#6B7A8D',
+  bg: '#F7F9FA',
+  faint: '#9BAAB8',
+  cyanBg: '#EEF9FB',
+  cyanBorder: '#B8EAF3',
+  locked: '#D1DAE3'
+};
+
+// Update this link if the exam file ever moves to a different location.
+const SRA_EXAM_URL = 'https://drive.google.com/file/d/1my-j6Hsnr-Iuoc1BHE_dMu3BQGB4hP5F/view?usp=sharing';
+
+export default function SRAContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
+  const [submitted, setSubmitted] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const canSubmit = acknowledged && file !== null;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    setSubmitted(true);
+    onSubmit();
+  };
+
+  const handleFile = (f: File) => {
+    if (f && (f.name.endsWith('.pdf') || f.name.endsWith('.docx') || f.name.endsWith('.doc'))) {
+      setFile(f);
+      setFileError('');
+    } else {
+      setFileError('Please upload a PDF or Word document (.pdf, .docx, .doc).');
+    }
+  };
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  }, []);
+
+  if (submitted) {
+    return (
+      <div className="pt-3">
+        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
+          <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
+          <span style={{ color: T.navy }}>
+            Your SRA (Verbal Reasoning Test) answer sheet has been submitted. HR is reviewing your results — please wait for an update before the next stage unlocks.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-3 space-y-4">
+      <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: '#FFFBEB', color: '#92400E' }}>
+        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#D97706' }} />
+        <span>This exam applies to Clerk and Checker applicants only. Open the exam file below, answer it completely, then upload your accomplished answer sheet here.</span>
+      </div>
+
+      <div className="rounded-xl overflow-hidden" style={{}}>
+        <div className="flex items-center gap-3 px-4 py-4" style={{ backgroundColor: T.bg }}>
+          <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)' }}>
+            <ClipboardList className="w-5 h-5" style={{ color: T.cyan }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm" style={{ color: T.navy }}>SRA &mdash; Verbal Reasoning Test</div>
+            <div className="text-xs mt-0.5" style={{ color: T.gray }}>Required for Clerk and Checker applicants</div>
+          </div>
+        </div>
+        <div className="px-4 py-4 space-y-3" style={{ }}>
+          <p className="text-sm leading-relaxed" style={{ color: T.navy }}>
+            Step 1: Click below to open the exam document. Read the instructions on the file carefully and answer completely.
+          </p>
+          <a
+            href={SRA_EXAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3 font-semibold rounded-lg transition-all duration-200 text-sm shadow-sm flex items-center justify-center gap-2"
+            style={{ backgroundColor: T.navy, color: '#fff' }}
+          >
+            <FileText className="w-4 h-4" /> Open SRA Exam <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold mb-1.5" style={{ color: T.navy }}>
+          Step 2: Upload Your Accomplished Answer Sheet
+        </label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.doc"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+        />
+        {file ? (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{  backgroundColor: T.bg }}>
+            <FileText className="w-5 h-5 shrink-0" style={{ color: T.cyan }} />
+            <span className="text-sm font-medium truncate flex-1" style={{ color: T.navy }}>{file.name}</span>
+            <button type="button" onClick={() => setFile(null)} className="shrink-0 transition-colors hover:text-red-600" style={{ color: T.gray }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            className="flex flex-col items-center justify-center px-4 py-6 rounded-xl cursor-pointer transition-all duration-150"
+            style={{
+              
+              backgroundColor: dragging ? T.cyanBg : T.bg
+            }}
+          >
+            <Upload className="w-6 h-6 mb-2" style={{ color: dragging ? T.cyan : T.gray }} />
+            <p className="text-sm text-center" style={{ color: T.gray }}>
+              Drag &amp; drop your answer sheet, or{' '}
+              <span className="font-semibold hover:underline" style={{ color: T.cyan }}>browse files</span>
+            </p>
+            <p className="text-xs mt-1" style={{ color: T.faint }}>PDF, DOC, or DOCX</p>
+          </div>
+        )}
+        {fileError && <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{fileError}</p>}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setAcknowledged((v) => !v)}
+        className="flex items-start gap-2.5 text-sm text-left"
+        style={{ color: T.navy }}
+      >
+        <span
+          className="w-4 h-4 rounded flex items-center justify-center shrink-0 mt-0.5"
+          style={{  backgroundColor: acknowledged ? T.cyan : 'transparent' }}
+        >
+          {acknowledged && <Check className="w-3 h-3 text-white" />}
+        </span>
+        <span>I confirm that the uploaded answer sheet is complete and accurate to the best of my knowledge.</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={!canSubmit}
+        className="w-full py-3 font-semibold rounded-lg transition-all duration-200 text-sm shadow-sm"
+        style={canSubmit
+          ? { backgroundColor: T.navy, color: '#fff', cursor: 'pointer' }
+          : { backgroundColor: T.locked, color: T.gray, cursor: 'not-allowed' }}
+      >
+        {canSubmit ? 'Submit SRA Answer Sheet' : !file ? 'Upload your answer sheet to continue' : 'Check the box above to continue'}
+      </button>
+
+      {isCurrent && (
+        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
+          <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
+          <span>Once submitted, HR will review your results before the Assessment stage unlocks.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+===== .\src\components\dashboard\AssessmentContent.tsx =====
+'use client';
+
+import { useState } from 'react';
+import { Check, Clock, AlertCircle, FileText } from 'lucide-react';
+
+const T = {
+  navy: '#0B2A4A',
+  cyan: '#12B6D6',
+  gray: '#6B7A8D',
+  
+  bg: '#F7F9FA',
+  faint: '#9BAAB8',
+  cyanBg: '#EEF9FB',
+  cyanBorder: '#B8EAF3',
+  locked: '#D1DAE3'
+};
+
+const QUESTIONS = [
+  'Based on your own understanding, what is the primary responsibility of the position you are applying for? Why do you say so?',
+  'If you are hired, what are the initial steps that you will undertake when you join the organization?',
+  'Describe competencies that you possess that will enable you to effectively and efficiently perform the functions of the position you are applying for?',
+  'What is your most notable strength that will enable you to efficiently and effectively perform the function? What are your weakness/es, if any, which may hamper you to do the same?',
+  'How do you see yourself five years from now?',
+];
+
+export default function AssessmentContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
+  const [submitted, setSubmitted] = useState(false);
+  const [answers, setAnswers] = useState<string[]>(Array(QUESTIONS.length).fill(''));
+
+  const updateAnswer = (idx: number, value: string) => {
+    setAnswers((prev) => prev.map((a, i) => (i === idx ? value : a)));
+  };
+
+  const missing = QUESTIONS.filter((_, idx) => answers[idx].trim().length === 0).length;
+  const canSubmit = missing === 0;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    setSubmitted(true);
+    onSubmit();
+  };
+
+  if (submitted) {
+    return (
+      <div className="pt-3">
+        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
+          <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
+          <span style={{ color: T.navy }}>
+            Your assessment answers have been noted. HR is reviewing your results — please wait for an update before the next stage unlocks.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-3 space-y-4">
+      <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm mb-1" style={{ backgroundColor: '#FFFBEB',  color: '#92400E' }}>
+        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#D97706' }} />
+        <span>Please answer all questions completely. Take your time — there is no time limit for this essay assessment.</span>
+      </div>
+
+      <div className="flex items-center gap-2.5 mb-1">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: T.cyanBg }}>
+          <FileText className="w-4 h-4" style={{ color: T.cyan }} />
+        </div>
+        <div>
+          <div className="font-semibold text-sm" style={{ color: T.navy }}>Essay Test Questions</div>
+          <div className="text-xs mt-0.5" style={{ color: T.gray }}>Answer each question in your own words.</div>
+        </div>
+      </div>
+
+      {QUESTIONS.map((q, idx) => (
+        <div key={idx}>
+          <label className="block text-xs font-semibold mb-1.5" style={{ color: T.navy }}>
+            {idx + 1}. {q}
+          </label>
+          <textarea
+            value={answers[idx]}
+            onChange={(e) => updateAnswer(idx, e.target.value)}
+            rows={7}
+            placeholder="Type your answer here..."
+            className="w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition-colors focus:border-[#12B6D6] resize-none"
+            style={{ backgroundColor: T.bg,  color: T.navy }}
+          />
+        </div>
+      ))}
+
+      {!canSubmit && (
+        <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2',  color: '#9F1239' }}>
+          Please answer all {QUESTIONS.length} questions before submitting. ({missing} remaining)
+        </div>
+      )}
+
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+        className="w-full py-3 font-semibold rounded-lg transition-all duration-200 text-sm shadow-sm"
+        style={canSubmit
+          ? { backgroundColor: T.navy, color: '#fff', cursor: 'pointer' }
+          : { backgroundColor: T.locked, color: T.gray, cursor: 'not-allowed' }}>
+        {canSubmit ? 'Submit Assessment' : `Complete all answers to submit (${missing} remaining)`}
+      </button>
+
+      {isCurrent && (
+        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
+          <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
+          <span>Once submitted, HR will review your answers before the Department Interview stage unlocks.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+===== .\src\components\dashboard\BackgroundCheckContent.tsx =====
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { Check, Clock, Upload, X, ShieldCheck } from 'lucide-react';
+import { readDemoApplication } from '@/lib/demo-session';
+
+const T = {
+  navy: '#0B2A4A',
+  cyan: '#12B6D6',
+  gray: '#6B7A8D',
+  
+  bg: '#F7F9FA',
+  faint: '#9BAAB8',
+  cyanBg: '#EEF9FB',
+  cyanBorder: '#B8EAF3',
+  locked: '#D1DAE3'
+};
+
+const selectCls = 'px-3 py-2.5 text-sm rounded-lg border outline-none transition-colors focus:border-[#12B6D6]';
+const selectStyle: React.CSSProperties = { backgroundColor: '#F7F9FA',  color: '#0B2A4A' };
+
+export default function BackgroundCheckContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
+  const [submitted, setSubmitted] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [position, setPosition] = useState('');
+  const [dateSigned, setDateSigned] = useState('');
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const app = readDemoApplication();
+    if (app) {
+      if (app.fullName) setFullName(app.fullName);
+      if (app.positionTitle) setPosition(app.positionTitle);
+    }
+  }, []);
+
+  const handleFile = (file: File) => {
+    setSignatureFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setSignaturePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const canSubmit = Boolean(dateSigned && signatureFile);
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    setSubmitted(true);
+    onSubmit();
+  };
+
+  if (submitted) {
+    return (
+      <div className="pt-3">
+        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
+          <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
+          <span style={{ color: T.navy }}>
+            Authorization form submitted. You&apos;ve automatically moved forward to the Department Interview stage.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-3 space-y-4">
+      <div className="flex items-center gap-2.5 mb-1">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: T.cyanBg }}>
+          <ShieldCheck className="w-4 h-4" style={{ color: T.cyan }} />
+        </div>
+        <div>
+          <div className="font-semibold text-sm" style={{ color: T.navy }}>Character and Background Check Authorization Form</div>
+        </div>
+      </div>
+
+      <div className="rounded-xl p-5 space-y-4 text-sm leading-relaxed text-justify" style={{ backgroundColor: T.bg, color: T.navy }}>
+        <p>
+          This is to authorize Arvin International Marketing Inc. to conduct a reference check with my present and/or previous employer(s) and
+          character references relative to my application in{' '}
+          <span className="font-bold underline">{position || '_________________________'}</span> position under Arvin International Marketing Inc.
+        </p>
+        <p>
+          I understand that information may include, but is not limited to, my employment performance, professional demeanor, and rehire
+          potential, dates of employment, salary, and employment history.
+        </p>
+        <p>
+          This further authorizes my former or current employers and references to release information regarding my employment record with
+          their companies and to provide any additional information that may be necessary to support my application for employment in Arvin
+          International Marketing Inc.
+        </p>
+        <p>
+          I knowingly and voluntarily release all former and current employers, references, and the Company from any and all liability arising
+          from their giving or receiving information about my employment history, my academic credentials or qualifications, and my suitability
+          for employment with Arvin International Marketing Inc.
+        </p>
+        <p>
+          If my application for employment in Arvin International Marketing Inc., will be accepted, any information in my 201 files which may be
+          requested by any external party will be released only with my consent as an exercise of my basic right as an employee.
+        </p>
+        <p>
+          I am fully aware that any misrepresentation in the information I have provided to Arvin International Marketing Inc. will be a ground
+          for non-acceptance of my application for employment or will be a basis for my dismissal from service in case I will be employed.
+        </p>
+        <p>
+          This form may be scanned, photocopied, or reproduced as a facsimile, and these copies will be as effective as a release or consent as
+          the original which I signed.
+        </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-16 pt-4 pb-2">
+        <div className="text-center">
+          <div className="font-bold underline text-sm mb-1" style={{ color: T.navy }}>{fullName || 'Your printed name'}</div>
+          <div className="text-xs" style={{ color: T.gray }}>SIGNATURE OVER PRINTED NAME</div>
+        </div>
+        <div className="text-center">
+          <input type="date" value={dateSigned} onChange={(e) => setDateSigned(e.target.value)}
+            className={selectCls + ' mb-1'} style={selectStyle} />
+          <div className="text-xs" style={{ color: T.gray }}>DATE SIGNED</div>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold mb-1.5" style={{ color: T.navy }}>E-Signature</label>
+        {signaturePreview ? (
+          <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: T.bg }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={signaturePreview} alt="E-signature preview" className="h-16 object-contain bg-white rounded" style={{ }} />
+            <div className="flex-1 min-w-0 text-xs" style={{ color: T.gray }}>{signatureFile?.name}</div>
+            <button type="button" onClick={() => { setSignatureFile(null); setSignaturePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+              className="p-1.5 rounded-lg hover:bg-black/5 shrink-0">
+              <X className="w-4 h-4" style={{ color: T.gray }} />
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="w-full flex flex-col items-center justify-center gap-1.5 py-6 rounded-xl border-2 border-dashed hover:bg-black/[0.02] transition-colors"
+            style={{ }}>
+            <Upload className="w-5 h-5" style={{ color: T.faint }} />
+            <span className="text-xs font-medium" style={{ color: T.gray }}>Upload a photo of your signature</span>
+          </button>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+      </div>
+
+      {!canSubmit && (
+        <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2',  color: '#9F1239' }}>
+          Please select the date signed and upload your e-signature before submitting.
+        </div>
+      )}
+
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+        className="w-full py-3 font-semibold rounded-lg transition-all duration-200 text-sm shadow-sm"
+        style={canSubmit
+          ? { backgroundColor: T.navy, color: '#fff', cursor: 'pointer' }
+          : { backgroundColor: T.locked, color: T.gray, cursor: 'not-allowed' }}>
+        Submit Authorization Form
+      </button>
+
+      {isCurrent && (
+        <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
+          <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
+          <span>Once submitted, you&apos;ll automatically move forward to the Department Interview stage.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+===== .\src\components\dashboard\JobOfferContent.tsx =====
+'use client';
+
+import { User, Calendar, Clock, Banknote, Gift } from 'lucide-react';
+
+export default function JobOfferContent({
+  isCurrent,
+  applicantName,
+}: {
+  isCurrent: boolean;
+  applicantName: string;
+}) {
+  return (
+    <div className="space-y-4 pt-3">
+      <div
+        className="rounded-xl p-5 flex items-start gap-3"
+        style={{ backgroundColor: '#EEF9FB' }}
+      >
+        <Gift className="w-6 h-6 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+        <div>
+          <p className="text-base font-bold" style={{ color: '#0B2A4A' }}>
+            Congratulations, you have a job offer!
+          </p>
+          <p className="text-sm mt-1" style={{ color: '#6B7A8D' }}>
+            Please review the offer details below. HR will reach out to walk you through the next
+            steps and answer any questions you may have.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: '#F7F9FA' }}>
+        <div className="flex items-center gap-2.5 text-sm">
+          <User className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+          <span style={{ color: '#0B2A4A' }}>
+            <span className="font-semibold">Name:</span> {applicantName}
+          </span>
+        </div>
+        <div className="flex items-center gap-2.5 text-sm">
+          <Calendar className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+          <span style={{ color: '#0B2A4A' }}>
+            <span className="font-semibold">Date Offered:</span> July 8, 2026
+          </span>
+        </div>
+        <div className="flex items-center gap-2.5 text-sm">
+          <Clock className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+          <span style={{ color: '#0B2A4A' }}>
+            <span className="font-semibold">Start Date:</span> July 27, 2026
+          </span>
+        </div>
+        <div className="flex items-center gap-2.5 text-sm">
+          <Banknote className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
+          <span style={{ color: '#0B2A4A' }}>
+            <span className="font-semibold">Salary Offered:</span> PHP 60,000 - 75,000 / month
+          </span>
+        </div>
+      </div>
+
+      {isCurrent && (
+        <div
+          className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm"
+          style={{ backgroundColor: '#F7F9FA', color: '#6B7A8D' }}
+        >
+          <Clock className="w-4 h-4 shrink-0" style={{ color: '#9BAAB8' }} />
+          <span>Please confirm your acceptance with HR to proceed to the next step.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+

@@ -493,8 +493,8 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
 
       <div className="rounded-xl px-5 py-5 space-y-4" style={{ backgroundColor: '#EEF9FB' }}>
         <div className="flex items-start gap-3"><Calendar className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Deadline</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">August 5, 2025</div></div></div>
-        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">Arvin International Marketing Inc. — 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City</div></div></div>
-        <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">8:00 AM - 6:00 PM, Monday to Friday</div></div></div>
+        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">HR Office, Ground Floor, Arvin HQ, BGC Taguig</div></div></div>
+        <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">9:00 AM - 5:00 PM, Monday to Friday</div></div></div>
       </div>
 
       {isCurrent && (

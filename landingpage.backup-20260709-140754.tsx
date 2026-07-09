@@ -8,7 +8,7 @@ import {
   Trophy, MapPin, TrendingUp, ShieldCheck, Users, Banknote,
   UserPlus, ClipboardList, Upload, Send, Eye, Unlock,
   ChevronRight, Menu, X, Briefcase, Clock, Building2,
-  CheckCircle2, ArrowRight, LogIn, Search, Calendar,
+  CheckCircle2, ArrowRight, LogIn, Search,
 } from 'lucide-react';
 
 /* ─── DATA ──────────────────────────────────────────────────────────────── */
@@ -57,32 +57,7 @@ type Job = {
   summary: string;
   responsibilities: string[];
   qualifications: string[];
-  postedDate: string;
-  deadline: string;
 };
-
-function getRelativeTime(dateStr: string): string {
-  const now = new Date();
-  const posted = new Date(dateStr);
-  const diffMs = now.getTime() - posted.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 5) return `${diffWeeks} week${diffWeeks === 1 ? '' : 's'} ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
-}
-
-function formatDeadline(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
 
 const ALL_JOBS: Job[] = [
   {
@@ -106,8 +81,6 @@ const ALL_JOBS: Job[] = [
       'Proficient in MS Office; knowledge of Canva or Adobe Suite is a plus',
       'Highly organized, creative, and results-driven',
     ],
-    postedDate: '2026-07-09T05:00:00',
-    deadline: '2026-08-15',
   },
   {
     title: 'Sales Representative',
@@ -130,8 +103,6 @@ const ALL_JOBS: Job[] = [
       'Willing to travel within the assigned territory',
       'Self-motivated with a competitive drive to succeed',
     ],
-    postedDate: '2026-07-08T10:00:00',
-    deadline: '2026-08-10',
   },
   {
     title: 'Business Development Manager',
@@ -154,8 +125,6 @@ const ALL_JOBS: Job[] = [
       'Excellent leadership, analytical, and presentation skills',
       'Proven track record of meeting revenue targets',
     ],
-    postedDate: '2026-07-07T09:00:00',
-    deadline: '2026-08-20',
   },
   {
     title: 'Logistics Coordinator',
@@ -178,8 +147,6 @@ const ALL_JOBS: Job[] = [
       'Proficient in Microsoft Excel and logistics software',
       'Willing to be assigned to any depot location',
     ],
-    postedDate: '2026-07-05T09:00:00',
-    deadline: '2026-08-05',
   },
   {
     title: 'Accounting Staff',
@@ -202,8 +169,6 @@ const ALL_JOBS: Job[] = [
       'Proficient in MS Excel and accounting software (QuickBooks, SAP, or similar)',
       'Fresh graduates are welcome to apply',
     ],
-    postedDate: '2026-07-09T03:00:00',
-    deadline: '2026-08-12',
   },
   {
     title: 'Warehouse Supervisor',
@@ -226,8 +191,6 @@ const ALL_JOBS: Job[] = [
       'Familiarity with warehouse management systems (WMS)',
       'Physically fit and willing to work on-site',
     ],
-    postedDate: '2026-07-02T09:00:00',
-    deadline: '2026-08-01',
   },
   {
     title: 'Clerk',
@@ -250,8 +213,6 @@ const ALL_JOBS: Job[] = [
       'Keen attention to detail and good organizational skills',
       'Willing to be assigned to any warehouse location',
     ],
-    postedDate: '2026-07-09T02:00:00',
-    deadline: '2026-08-08',
   },
   {
     title: 'Checker',
@@ -274,8 +235,6 @@ const ALL_JOBS: Job[] = [
       'Physically fit and willing to work on-site',
       'Willing to be assigned to any warehouse location',
     ],
-    postedDate: '2026-07-09T06:00:00',
-    deadline: '2026-08-08',
   },
 ];
 
@@ -504,8 +463,6 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
               { icon: MapPin, label: job.location },
               { icon: Clock, label: job.type },
               { icon: Building2, label: job.dept },
-              { icon: Clock, label: `Posted ${getRelativeTime(job.postedDate)}` },
-              { icon: Calendar, label: `Apply by ${formatDeadline(job.deadline)}` },
             ].map(({ icon: Icon, label }) => (
               <div
                 key={label}
@@ -652,15 +609,6 @@ function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelec
                     <span style={{ color: '#D1DAE3' }}>·</span>
                     <span className="text-xs" style={{ color: '#9BAAB8' }}>
                       {job.level}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs" style={{ color: '#9BAAB8' }}>
-                      Posted {getRelativeTime(job.postedDate)}
-                    </span>
-                    <span style={{ color: '#D1DAE3' }}>·</span>
-                    <span className="text-xs" style={{ color: '#DC2626' }}>
-                      Apply by {formatDeadline(job.deadline)}
                     </span>
                   </div>
                 </div>
@@ -995,17 +943,6 @@ export default function HomePage() {
                   <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#9BAAB8' }}>
                     <MapPin size={12} strokeWidth={1.5} />
                     {job.location}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-1" style={{ color: '#9BAAB8' }}>
-                    <span className="flex items-center gap-1.5">
-                      <Clock size={12} strokeWidth={1.5} />
-                      Posted {getRelativeTime(job.postedDate)}
-                    </span>
-                    <span className="flex items-center gap-1.5" style={{ color: '#DC2626' }}>
-                      <Calendar size={12} strokeWidth={1.5} />
-                      Apply by {formatDeadline(job.deadline)}
-                    </span>
                   </div>
 
                   <button
