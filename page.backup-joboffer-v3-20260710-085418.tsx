@@ -582,7 +582,9 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
                     {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} />}
                   </StepGate>
                 ) : step.key === 'joboffer' ? (
-                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} onAccept={onSimulateHrComplete} onDecline={onWithdraw} />
+                  <StepGate stepLabel="Job Offer" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
+                    {() => <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} />}
+                  </StepGate>
                 ) : step.key === 'requirements' ? (
                   <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
                     {() => <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />}

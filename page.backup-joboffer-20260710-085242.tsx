@@ -146,7 +146,7 @@ function buildHiringSteps(includeSri: boolean): { key: StepKey; label: string; s
 }
 
 const STEP_DETAILS = [
-  { date: 'July 20, 2026', time: '10:00 AM', venue: null, platform: null, instructions: 'Please wait for a message from HR regarding your Initial Interview schedule. Depending on your assigned interviewer, this may be conducted via Microsoft Teams, face-to-face, or a Viber call - make sure your Viber, email, and phone are all reachable so HR can reach you through whichever mode is assigned.' },
+  { date: 'July 20, 2026', time: '10:00 AM', venue: null, platform: null, instructions: 'Please wait for a text message from HR regarding your Initial Interview schedule. Make sure your Viber is ready and reachable, as HR will call you there.' },
   { date: 'July 29, 2025', time: '2:00 PM', venue: 'Arvin International Marketing Inc. - 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City', platform: null, instructions: 'This is a technical interview with your prospective department head. Review your application thoroughly and be prepared to discuss your relevant experience in detail.' },
 ];
 
@@ -582,7 +582,9 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
                     {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} />}
                   </StepGate>
                 ) : step.key === 'joboffer' ? (
-                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} onAccept={onSimulateHrComplete} onDecline={onWithdraw} />
+                  <StepGate stepLabel="Job Offer" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
+                    {() => <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} />}
+                  </StepGate>
                 ) : step.key === 'requirements' ? (
                   <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
                     {() => <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />}

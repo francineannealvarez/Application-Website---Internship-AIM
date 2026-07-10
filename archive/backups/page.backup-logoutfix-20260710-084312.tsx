@@ -146,7 +146,7 @@ function buildHiringSteps(includeSri: boolean): { key: StepKey; label: string; s
 }
 
 const STEP_DETAILS = [
-  { date: 'July 20, 2026', time: '10:00 AM', venue: null, platform: null, instructions: 'Please wait for a message from HR regarding your Initial Interview schedule. Depending on your assigned interviewer, this may be conducted via Microsoft Teams, face-to-face, or a Viber call - make sure your Viber, email, and phone are all reachable so HR can reach you through whichever mode is assigned.' },
+  { date: 'July 20, 2026', time: '10:00 AM', venue: null, platform: null, instructions: 'Please wait for a text message from HR regarding your Initial Interview schedule. Make sure your Viber is ready and reachable, as HR will call you there.' },
   { date: 'July 29, 2025', time: '2:00 PM', venue: 'Arvin International Marketing Inc. - 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City', platform: null, instructions: 'This is a technical interview with your prospective department head. Review your application thoroughly and be prepared to discuss your relevant experience in detail.' },
 ];
 
@@ -582,7 +582,9 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
                     {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} />}
                   </StepGate>
                 ) : step.key === 'joboffer' ? (
-                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} onAccept={onSimulateHrComplete} onDecline={onWithdraw} />
+                  <StepGate stepLabel="Job Offer" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
+                    {() => <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} />}
+                  </StepGate>
                 ) : step.key === 'requirements' ? (
                   <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
                     {() => <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />}
@@ -667,7 +669,7 @@ export default function ApplicantDashboard() {
 
   useEffect(() => {
     if (status === 'unauthenticated' && !demoUser) {
-      router.push('/');
+      router.push('/login');
     }
   }, [status, demoUser, router]);
 
@@ -715,7 +717,7 @@ export default function ApplicantDashboard() {
               <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)', boxShadow: '0 0 0 2px #F7F9FA' }}><User className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
               <span className="hidden sm:block text-sm font-medium text-[#0B2A4A]">{name}</span>
             </div>
-            <button onClick={async () => { clearDemoUser(); if (session) { await signOut({ redirect: false }); } router.push('/'); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 active:scale-95 transition-all">
+            <button onClick={() => { clearDemoUser(); void signOut({ callbackUrl: '/' }); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 active:scale-95 transition-all">
               <LogOut className="w-3.5 h-3.5" /> Logout
             </button>
           </div>
