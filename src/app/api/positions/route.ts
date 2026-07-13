@@ -3,10 +3,19 @@ import { db } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
-    const positions = await db.position.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: "desc" },
+    const jobPostings = await db.job_postings.findMany({
+      where: { archived: false },
+      orderBy: { deadline: "desc" },
     });
+
+    const positions = jobPostings.map((job) => ({
+      id: job.id,
+      title: job.title,
+      department: job.department,
+      location: job.location,
+      employmentType: job.employment_type,
+      description: job.description,
+    }));
 
     return NextResponse.json(positions);
   } catch (error) {

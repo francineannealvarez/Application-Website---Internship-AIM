@@ -1,86 +1,115 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+async function saveUpload(file: File, prefix: string) {
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  await mkdir(uploadDir, { recursive: true });
+
+  const timestamp = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const fileName = `${timestamp}-${prefix}${safeName}`;
+  const diskPath = path.join(uploadDir, fileName);
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(diskPath, buffer);
+
+  return `/uploads/${fileName}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const formData = await request.formData();
+    const fullName = (formData.get("fullName") as string)?.trim();
+    const email = (formData.get("email") as string)?.trim().toLowerCase();
+    const positionId = formData.get("positionId") as string;
+    const phoneNumber = (formData.get("phoneNumber") as string) || null;
+    const resumeFile = formData.get("resume") as File;
+
+    if (!fullName || !email) {
+      return NextResponse.json(
+        { error: "Full name and email are required" },
+        { status: 400 }
+      );
     }
 
-    const formData = await request.formData();
-    const positionId = formData.get("positionId") as string;
-    const phoneNumber = formData.get("phoneNumber") as string;
-    const homeAddress = formData.get("homeAddress") as string;
-    const dateOfBirth = formData.get("dateOfBirth") as string;
-    const gender = formData.get("gender") as string;
-    const heardAboutUs = formData.get("heardAboutUs") as string;
-    const preferredStartDate = formData.get("preferredStartDate") as string;
-    const message = formData.get("message") as string;
-    const resumeFile = formData.get("resume") as File;
-    const coverLetterFile = formData.get("coverLetter") as File | null;
-    const portfolioUrl = formData.get("portfolioUrl") as string;
-
-    if (!positionId || !resumeFile) {
+    if (!positionId || !resumeFile || resumeFile.size === 0) {
       return NextResponse.json(
         { error: "Position and resume are required" },
         { status: 400 }
       );
     }
 
-    // Check if user already has an application
-    const existingApplication = await db.application.findUnique({
-      where: { userId: session.user.id },
+    const position = await db.job_postings.findUnique({
+      where: { id: positionId },
     });
-
-    if (existingApplication) {
+    if (!position || position.archived) {
       return NextResponse.json(
-        { error: "You already have an active application" },
+        { error: "Selected position is not available" },
         { status: 400 }
       );
     }
 
-    // Save files to public/uploads
-    const uploadDir = "public/uploads";
-    const timestamp = Date.now();
-
-    // Save resume
-    const resumeBuffer = await resumeFile.arrayBuffer();
-    const resumePath = `/uploads/${timestamp}-${resumeFile.name}`;
-
-    // For now, we'll store the file path. In production, use cloud storage
-    // const fs = require("fs").promises;
-    // await fs.writeFile(uploadDir + resumePath, Buffer.from(resumeBuffer));
-
-    // Save cover letter if provided
-    let coverLetterPath = null;
-    if (coverLetterFile) {
-      const coverLetterBuffer = await coverLetterFile.arrayBuffer();
-      coverLetterPath = `/uploads/${timestamp}-cl-${coverLetterFile.name}`;
-      // await fs.writeFile(uploadDir + coverLetterPath, Buffer.from(coverLetterBuffer));
-    }
-
-    // Create application
-    const application = await db.application.create({
-      data: {
-        userId: session.user.id,
-        positionId,
-        resumePath,
-        coverLetterPath,
-        portfolioUrl: portfolioUrl || null,
-        phoneNumber,
-        homeAddress,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        gender,
-        heardAboutUs,
-        preferredStartDate: preferredStartDate ? new Date(preferredStartDate) : null,
-        message,
-      },
+    // Check if a user with this email already exists in Supabase Auth
+    let userId: string;
+    const existingUser = await db.users.findFirst({
+      where: { email },
     });
 
-    // Create notification for HR
-    // TODO: Create notification for all HR admins
+    const supabaseAdmin = createAdminClient();
+
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      // Create a new Supabase Auth account for this applicant
+      const randomPassword = crypto.randomUUID();
+      const { data: created, error: createError } =
+        await supabaseAdmin.auth.admin.createUser({
+          email,
+          password: randomPassword,
+          email_confirm: true,
+          user_metadata: { full_name: fullName },
+        });
+
+      if (createError || !created?.user) {
+        console.error("Supabase createUser error:", createError);
+        return NextResponse.json(
+          { error: "Could not create applicant account" },
+          { status: 500 }
+        );
+      }
+      userId = created.user.id;
+    }
+
+    // Ensure a matching profile exists
+    const existingProfile = await db.profiles.findUnique({
+      where: { id: userId },
+    });
+    if (!existingProfile) {
+      await db.profiles.create({
+        data: {
+          id: userId,
+          full_name: fullName,
+          role: "applicant",
+        },
+      });
+    }
+
+    // Save the resume file to disk (note: no resume_url column exists yet on
+    // applications — see note below)
+    await saveUpload(resumeFile, "");
+
+    const application = await db.applications.create({
+      data: {
+        applicant_user_id: userId,
+        job_id: positionId,
+        full_name: fullName,
+        email: email,
+        phone: phoneNumber,
+      },
+    });
 
     return NextResponse.json(
       { message: "Application submitted successfully", application },
@@ -97,22 +126,14 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const email = request.nextUrl.searchParams.get("email");
+    if (!email) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const application = await db.application.findUnique({
-      where: { userId: session.user.id },
-      include: {
-        user: true,
-        position: true,
-        documents: {
-          include: {
-            requirement: true,
-          },
-        },
-      },
+    const application = await db.applications.findFirst({
+      where: { email: email.toLowerCase() },
+      orderBy: { date_applied: "desc" },
     });
 
     return NextResponse.json(application);

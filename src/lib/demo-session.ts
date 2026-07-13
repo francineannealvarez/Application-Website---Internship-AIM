@@ -5,7 +5,13 @@ export type DemoUser = {
   role: 'APPLICANT' | 'HR_ADMIN';
 };
 
+export type DemoApplication = {
+  fullName: string;
+  email: string;
+};
+
 const DEMO_USER_KEY = 'mockUser';
+const DEMO_APPLICATION_KEY = 'mockApplication';
 
 export function readDemoUser(): DemoUser | null {
   if (typeof window === 'undefined') return null;
@@ -27,4 +33,21 @@ export function writeDemoUser(user: DemoUser) {
 export function clearDemoUser() {
   if (typeof window === 'undefined') return;
   window.sessionStorage.removeItem(DEMO_USER_KEY);
+}
+
+export function readDemoApplication(): DemoApplication | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(DEMO_APPLICATION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DemoApplication;
+  } catch {
+    return null;
+  }
+}
+
+export function writeDemoApplication(application: DemoApplication) {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(DEMO_APPLICATION_KEY, JSON.stringify(application));
 }
