@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Inter } from "next/font/google";
-import { writeDemoUser } from "@/lib/demo-session";
+import { writeDemoUser, writeDemoApplication } from "@/lib/demo-session";
+import { setDemoFiles } from "@/lib/demo-files";
 import {
   Upload, FileText, X, ChevronDown, CheckCircle2, Shield, Phone,
   Briefcase, Building2, ArrowRight, Info, Database, Settings, Share2,
@@ -12,6 +13,7 @@ import {
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
+// --- Theme (matches landing page) --------------------------------
 const NAVY = "#0B2A4A";
 const CYAN = "#12B6D6";
 const MUTED = "#6B7A8D";
@@ -20,14 +22,48 @@ const BG_LIGHT = "#F7F9FA";
 const ACCENT_BG = "#EEF9FB";
 const ACCENT_BORDER = "#B8EAF3";
 
-type Position = {
-  id: string;
-  title: string;
-  department: string;
-  location: string;
-  employmentType: string;
+const POSITIONS = [
+  "Software Engineer",
+  "Product Manager",
+  "UI/UX Designer",
+  "Data Analyst",
+  "Marketing Specialist",
+  "Operations Manager",
+  "Sales Executive",
+  "Business Development Associate",
+  "Clerk",
+  "Checker",
+];
+
+// Map each position to its department (shown on the success screen)
+const DEPARTMENT_MAP: Record<string, string> = {
+  "Software Engineer": "Information Technology",
+  "Product Manager": "Product",
+  "UI/UX Designer": "Design",
+  "Data Analyst": "Data & Analytics",
+  "Marketing Specialist": "Marketing",
+  "Operations Manager": "Operations",
+  "Sales Executive": "Sales",
+  "Business Development Associate": "Business Development",
+  "Clerk": "Operations",
+  "Checker": "Operations",
 };
 
+// Employment type per position (defaults to Full-time for corporate roles)
+const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
+  "Software Engineer": "Full-time",
+  "Product Manager": "Full-time",
+  "UI/UX Designer": "Full-time",
+  "Data Analyst": "Full-time",
+  "Marketing Specialist": "Full-time",
+  "Operations Manager": "Full-time",
+  "Sales Executive": "Full-time",
+  "Business Development Associate": "Full-time",
+  "Clerk": "Full-time",
+  "Checker": "Full-time",
+};
+
+// Format PH phone: auto-inserts spaces as user types
 function formatPHPhone(raw: string) {
   let digits = raw.replace(/\D/g, "");
   if (digits.startsWith("0")) digits = "63" + digits.slice(1);
@@ -47,8 +83,7 @@ function isValidPHPhone(val: string) {
 }
 
 export default function ApplyPage() {
-  const [form, setForm] = useState({ fullName: "", email: "", phone: "+63 ", positionId: "" });
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [form, setForm] = useState({ fullName: "", email: "", phone: "+63 ", position: "" });
   const [file, setFile] = useState<File | null>(null);
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -61,22 +96,13 @@ export default function ApplyPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverLetterInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetch("/api/positions")
-      .then((r) => r.json())
-      .then((data) => setPositions(Array.isArray(data) ? data : []))
-      .catch(console.error);
-  }, []);
-
-  const selectedPosition = positions.find((p) => p.id === form.positionId);
-
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.fullName.trim()) e.fullName = "Full name is required.";
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = "Enter a valid email address.";
     if (!isValidPHPhone(form.phone)) e.phone = "Enter a valid PH mobile number (e.g. +63 917 123 4567).";
-    if (!form.positionId) e.position = "Please select a position.";
+    if (!form.position) e.position = "Please select a position.";
     if (!file) e.file = "Please attach your resume or CV.";
     return e;
   };
@@ -86,38 +112,21 @@ export default function ApplyPage() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSubmitting(true);
-    setErrors({});
-
-    try {
-      const formData = new FormData();
-      formData.append("fullName", form.fullName.trim());
-      formData.append("email", form.email.trim());
-      formData.append("positionId", form.positionId);
-      formData.append("phoneNumber", form.phone);
-      formData.append("resume", file as File);
-      if (coverLetterFile) formData.append("coverLetter", coverLetterFile);
-
-      const res = await fetch("/api/applications", { method: "POST", body: formData });
-      const data = await res.json();
-
-      if (res.ok) {
-       writeDemoUser({
-          id: `demo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          name: form.fullName.trim(),
-          email: form.email.trim(),
-          role: "APPLICANT",
-        });
-        setSubmitted(true);
-      } else {
-        setErrors({ submit: data.error || "Submission failed. Please try again." });
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setErrors({ submit: `Error: ${message}` });
-      console.error("Submit error detail:", err);
-    } finally {
-      setSubmitting(false);
-    }
+    writeDemoUser({ id: "2", name: form.fullName, email: form.email, role: "APPLICANT" });
+    writeDemoApplication({
+      fullName: form.fullName,
+      email: form.email,
+      phone: form.phone,
+      positionTitle: form.position,
+      employmentType: EMPLOYMENT_TYPE_MAP[form.position] || "Full-time",
+      resumeFileName: file?.name || "",
+      coverLetterFileName: coverLetterFile?.name || null,
+      submittedAt: new Date().toISOString(),
+    });
+    // Persist the actual files so the "View Application" page can display/open them.
+    await setDemoFiles(file, coverLetterFile);
+    setSubmitting(false);
+    setSubmitted(true);
   };
 
   const handleChange = (field: string, value: string) => {
@@ -157,7 +166,7 @@ export default function ApplyPage() {
     if (f) handleCoverLetterFile(f);
   }, []);
 
-  const department = selectedPosition?.department || "General";
+  const department = DEPARTMENT_MAP[form.position] || "General";
 
   if (submitted) {
     return (
@@ -189,7 +198,7 @@ export default function ApplyPage() {
               <div className="flex items-center gap-3">
                 <Briefcase size={16} style={{ color: CYAN }} strokeWidth={1.5} />
                 <p className="text-sm" style={{ color: NAVY }}>
-                  <span className="font-semibold">Position:</span> {selectedPosition?.title}
+                  <span className="font-semibold">Position:</span> {form.position}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -201,7 +210,7 @@ export default function ApplyPage() {
             </div>
 
             <Link
-              href={`/dashboard?email=${encodeURIComponent(form.email)}`}
+              href="/dashboard"
               className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all duration-200 hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
               style={{ backgroundColor: NAVY }}
             >
@@ -231,12 +240,6 @@ export default function ApplyPage() {
             </div>
 
             <form onSubmit={handleSubmit} noValidate className="px-6 py-6 space-y-5">
-              {errors.submit && (
-                <div className="p-3 rounded-lg text-sm" style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626" }}>
-                  {errors.submit}
-                </div>
-              )}
-
               <Field label="Full Name" error={errors.fullName}>
                 <input
                   type="text"
@@ -289,10 +292,10 @@ export default function ApplyPage() {
                     style={{
                       border: `1px solid ${errors.position ? "#f87171" : BORDER}`,
                       backgroundColor: BG_LIGHT,
-                      color: selectedPosition ? NAVY : MUTED,
+                      color: form.position ? NAVY : MUTED,
                     }}
                   >
-                    <span>{selectedPosition?.title || "Select a position"}</span>
+                    <span>{form.position || "Select a position"}</span>
                     <ChevronDown
                       className="w-4 h-4 shrink-0 transition-transform duration-200"
                       style={{ color: MUTED, transform: positionOpen ? "rotate(180deg)" : "none" }}
@@ -304,18 +307,15 @@ export default function ApplyPage() {
                       className="absolute top-full mt-1.5 left-0 right-0 z-30 bg-white rounded-xl overflow-hidden py-1"
                       style={{ border: `1px solid ${BORDER}`, boxShadow: "0 12px 32px rgba(11,42,74,0.12)" }}
                     >
-                      {positions.length === 0 && (
-                        <div className="px-4 py-2.5 text-sm" style={{ color: MUTED }}>No open positions right now.</div>
-                      )}
-                      {positions.map((p) => (
+                      {POSITIONS.map((p) => (
                         <button
-                          key={p.id}
+                          key={p}
                           type="button"
-                          onClick={() => { handleChange("positionId", p.id); setPositionOpen(false); }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 ${form.positionId === p.id ? "font-semibold" : ""}`}
-                          style={form.positionId === p.id ? { color: CYAN, background: ACCENT_BG } : { color: NAVY }}
+                          onClick={() => { handleChange("position", p); setPositionOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 ${form.position === p ? "font-semibold" : ""}`}
+                          style={form.position === p ? { color: CYAN, background: ACCENT_BG } : { color: NAVY }}
                         >
-                          {p.title}
+                          {p}
                         </button>
                       ))}
                     </div>
@@ -430,6 +430,7 @@ export default function ApplyPage() {
   );
 }
 
+// --- Header --------------------------------
 function Header() {
   return (
     <header
@@ -453,6 +454,7 @@ function Header() {
   );
 }
 
+// --- Footer --------------------------------
 function Footer({ onPrivacy }: { onPrivacy: () => void }) {
   return (
     <footer
@@ -474,6 +476,7 @@ function Footer({ onPrivacy }: { onPrivacy: () => void }) {
   );
 }
 
+// --- Privacy Policy sections data --------------------------------
 const PRIVACY_SECTIONS: { icon: React.ElementType; title: string; body: React.ReactNode }[] = [
   {
     icon: Info,
@@ -571,6 +574,7 @@ const PRIVACY_SECTIONS: { icon: React.ElementType; title: string; body: React.Re
   },
 ];
 
+// --- Privacy Policy Modal --------------------------------
 function PrivacyModal({ onClose }: { onClose: () => void }) {
   return (
     <div
@@ -619,6 +623,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// --- Field wrapper --------------------------------
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -641,6 +646,7 @@ function inputStyle(hasError: boolean): React.CSSProperties {
   };
 }
 
+// --- Styles --------------------------------
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   overflowY: "auto",

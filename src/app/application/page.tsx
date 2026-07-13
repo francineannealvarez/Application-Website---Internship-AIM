@@ -4,38 +4,39 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getUserApplication } from '@/lib/mockData';
-import { readDemoUser, type DemoUser } from '@/lib/demo-session';
+import { getUserApplication, mockPositions } from '@/lib/mockData';
+import { readDemoUser, readDemoApplication, type DemoUser } from '@/lib/demo-session';
+import { getDemoResumeFile, getDemoCoverLetterFile } from '@/lib/demo-files';
 
-type ApplicationWithRelations = {
-  user?: {
-    id?: string;
-    name?: string | null;
-    email?: string | null;
-  };
-  position?: {
-    id: string;
-    title: string;
-    employmentType?: string | null;
-  };
-  phoneNumber?: string | null;
-  homeAddress?: string | null;
-  dateOfBirth?: string | Date | null;
-  gender?: string | null;
-  preferredStartDate?: string | Date | null;
-  message?: string | null;
-  resumePath: string;
-  coverLetterPath?: string | null;
-  portfolioUrl?: string | null;
-  rejectionReason?: string | null;
-  submittedAt?: string | Date;
-  updatedAt?: string | Date;
+// Long base64 data: URLs can be unreliable when opened directly in a new tab
+// (some browsers show a blank page). Converting to a blob: URL first fixes this.
+function dataUrlToBlobUrl(dataUrl: string): string {
+  const [header, base64] = dataUrl.split(',');
+  const mimeMatch = header.match(/data:(.*);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: mime });
+  return URL.createObjectURL(blob);
+}
+
+type DisplayApplication = {
+  fullName: string;
+  email: string;
+  phone: string;
+  positionTitle: string;
+  submittedAtLabel: string;
+  resumeFileName: string;
+  coverLetterFileName?: string | null;
+  resumeHref?: string | null;
+  coverLetterHref?: string | null;
 };
 
 export default function ApplicationPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [application, setApplication] = useState<ApplicationWithRelations | null>(null);
+  const [application, setApplication] = useState<DisplayApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [demoUser] = useState<DemoUser | null>(() => (typeof window !== 'undefined' ? readDemoUser() : null));
 
@@ -50,7 +51,17 @@ export default function ApplicationPage() {
       const res = await fetch('/api/applications');
       if (res.ok) {
         const data = await res.json();
-        setApplication(data);
+        setApplication({
+          fullName: data.user?.name || session?.user?.name || 'N/A',
+          email: data.user?.email || session?.user?.email || 'N/A',
+          phone: data.phoneNumber || 'N/A',
+          positionTitle: data.position?.title || 'N/A',
+          submittedAtLabel: data.submittedAt ? new Date(data.submittedAt).toLocaleDateString() : 'N/A',
+          resumeFileName: data.resumePath || '',
+          coverLetterFileName: data.coverLetterPath || null,
+          resumeHref: data.resumePath || null,
+          coverLetterHref: data.coverLetterPath || null,
+        });
       }
     } catch (error) {
       console.error('Error fetching application:', error);
@@ -65,8 +76,44 @@ export default function ApplicationPage() {
     if (userId) {
       const timer = window.setTimeout(() => {
         if (demoUser?.id) {
+          // Prefer the applicant's own freshly-submitted data (saved by the Application Form).
+          const submitted = readDemoApplication();
+          if (submitted) {
+            const resumeFileObj = getDemoResumeFile();
+            const coverLetterFileObj = getDemoCoverLetterFile();
+            setApplication({
+              fullName: submitted.fullName,
+              email: submitted.email,
+              phone: submitted.phone,
+              positionTitle: submitted.positionTitle,
+              submittedAtLabel: new Date(submitted.submittedAt).toLocaleDateString(),
+              resumeFileName: submitted.resumeFileName,
+              coverLetterFileName: submitted.coverLetterFileName,
+              resumeHref: resumeFileObj?.dataUrl ? dataUrlToBlobUrl(resumeFileObj.dataUrl) : null,
+              coverLetterHref: coverLetterFileObj?.dataUrl ? dataUrlToBlobUrl(coverLetterFileObj.dataUrl) : null,
+            });
+            setLoading(false);
+            return;
+          }
+
+          // Fallback: sample/mock data for demo browsing.
           const mockApplication = getUserApplication(demoUser.id);
-          setApplication(mockApplication ? (mockApplication as ApplicationWithRelations) : null);
+          if (mockApplication) {
+            const mockPosition = mockPositions.find((p) => p.id === mockApplication.positionId);
+            setApplication({
+              fullName: demoUser.name,
+              email: demoUser.email,
+              phone: mockApplication.phone || 'N/A',
+              positionTitle: mockPosition?.title || 'N/A',
+              submittedAtLabel: mockApplication.createdAt ? new Date(mockApplication.createdAt).toLocaleDateString() : 'N/A',
+              resumeFileName: mockApplication.resumePath,
+              coverLetterFileName: mockApplication.coverLetterPath,
+              resumeHref: mockApplication.resumePath,
+              coverLetterHref: mockApplication.coverLetterPath,
+            });
+          } else {
+            setApplication(null);
+          }
           setLoading(false);
           return;
         }
@@ -79,18 +126,19 @@ export default function ApplicationPage() {
   }, [session, demoUser, status]);
 
   if (loading || status === 'loading') {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center h-screen" style={{ color: '#6B7A8D' }}>Loading...</div>;
   }
 
   if (!application) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8f1fc_0%,_#f8fafc_55%)] py-8 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center animate-fade-slide-up">
-            <p className="text-gray-600 mb-4">You don&apos;t have an application yet.</p>
+      <div className="min-h-screen bg-[#F7F9FA] py-10 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-2xl border border-[#E5E9EC] shadow-sm p-8 text-center animate-fade-slide-up">
+            <p className="mb-4" style={{ color: '#6B7A8D' }}>You don&apos;t have an application yet.</p>
             <Link
               href="/apply"
-              className="inline-block px-6 py-2.5 bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+              className="inline-block px-6 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+              style={{ backgroundColor: '#0B2A4A' }}
             >
               Start Your Application
             </Link>
@@ -101,134 +149,96 @@ export default function ApplicationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8f1fc_0%,_#f8fafc_55%)] py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <Link href="/dashboard" className="text-[#00AEEF] hover:underline mb-4 inline-flex items-center gap-1 group">
-          <span className="transition-transform group-hover:-translate-x-0.5">←</span> Back to Dashboard
+    <div className="min-h-screen bg-[#F7F9FA] py-10 px-4">
+      <div className="max-w-4xl mx-auto">
+        <Link href="/dashboard" className="hover:underline mb-4 inline-flex items-center gap-1 group text-sm font-medium" style={{ color: '#12B6D6' }}>
+          <span className="transition-transform group-hover:-translate-x-0.5">&larr;</span> Back to Dashboard
         </Link>
 
-        <div className="bg-white rounded-2xl shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden mt-2 animate-fade-slide-up">
-          <div className="bg-gradient-to-r from-[#00AEEF] to-[#1B3A5C] px-8 py-6 text-white">
+        <div className="bg-white rounded-2xl border border-[#E5E9EC] shadow-sm overflow-hidden mt-2 animate-fade-slide-up">
+          <div className="px-8 py-6 text-white" style={{ backgroundColor: '#0B2A4A' }}>
             <h1 className="text-2xl font-bold">Your Application</h1>
           </div>
 
-          <div className="p-8 space-y-6">
+          <div className="p-8 sm:p-10 space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
+              <h2 className="text-lg font-bold text-[#0B2A4A] mb-4">Personal Information</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Full Name</p>
-                  <p className="font-medium text-gray-900">{application.user?.name || session?.user?.name || demoUser?.name || 'N/A'}</p>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Full Name</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.fullName || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Email</p>
-                  <p className="font-medium text-gray-900">{application.user?.email || session?.user?.email || demoUser?.email || 'N/A'}</p>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Email</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.email || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Phone</p>
-                  <p className="font-medium text-gray-900">{application.phoneNumber || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Home Address</p>
-                  <p className="font-medium text-gray-900">{application.homeAddress || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Date of Birth</p>
-                  <p className="font-medium text-gray-900">
-                    {application.dateOfBirth
-                      ? new Date(application.dateOfBirth).toLocaleDateString()
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Gender</p>
-                  <p className="font-medium text-gray-900">{application.gender || 'N/A'}</p>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Phone</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.phone || 'N/A'}</p>
                 </div>
               </div>
             </div>
 
-            <hr className="border-gray-100" />
+            <hr style={{ borderColor: '#E5E9EC' }} />
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Application Details</h2>
+              <h2 className="text-lg font-bold text-[#0B2A4A] mb-4">Application Details</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Position Applied</p>
-                  <p className="font-medium text-gray-900">{application.position?.title || 'N/A'}</p>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Position Applied</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.positionTitle || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Employment Type</p>
-                  <p className="font-medium text-gray-900">{application.position?.employmentType || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Preferred Start Date</p>
-                  <p className="font-medium text-gray-900">
-                    {application.preferredStartDate
-                      ? new Date(application.preferredStartDate).toLocaleDateString()
-                      : 'N/A'}
-                  </p>
+                  <p className="text-xs font-medium" style={{ color: '#9BAAB8' }}>Date Submitted</p>
+                  <p className="font-medium text-[#0B2A4A]">{application.submittedAtLabel || 'N/A'}</p>
                 </div>
               </div>
             </div>
 
-            <hr className="border-gray-100" />
+            <hr style={{ borderColor: '#E5E9EC' }} />
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Message</h2>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="text-gray-900 text-sm">{application.message || 'No message provided'}</p>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
+              <h2 className="text-lg font-bold text-[#0B2A4A] mb-4">Documents</h2>
               <div className="space-y-2">
-                <div className="flex justify-between items-center p-3.5 bg-gray-50 hover:bg-blue-50/40 rounded-xl border border-gray-100 transition-colors duration-200">
-                  <span className="text-gray-900 text-sm font-medium">📄 Resume</span>
-                  <a
-                    href={application.resumePath}
-                    className="text-[#00AEEF] hover:underline text-sm font-medium"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Download
-                  </a>
+                <div className="flex justify-between items-center p-3.5 rounded-xl transition-colors duration-200" style={{ backgroundColor: '#F7F9FA', border: '1px solid #E5E9EC' }}>
+                  <span className="text-sm font-medium text-[#0B2A4A]">Resume: {application.resumeFileName || 'N/A'}</span>
+                  {application.resumeHref ? (
+                    <a
+                      href={application.resumeHref}
+                      className="hover:underline text-sm font-medium"
+                      style={{ color: '#12B6D6' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open
+                    </a>
+                  ) : (
+                    <span className="text-sm font-medium" style={{ color: '#9BAAB8' }}>N/A</span>
+                  )}
                 </div>
-                {application.coverLetterPath && (
-                  <div className="flex justify-between items-center p-3.5 bg-gray-50 hover:bg-blue-50/40 rounded-xl border border-gray-100 transition-colors duration-200">
-                    <span className="text-gray-900 text-sm font-medium">📄 Cover Letter</span>
+                <div className="flex justify-between items-center p-3.5 rounded-xl transition-colors duration-200" style={{ backgroundColor: '#F7F9FA', border: '1px solid #E5E9EC' }}>
+                  <span className="text-sm font-medium text-[#0B2A4A]">Cover Letter: {application.coverLetterFileName || 'N/A'}</span>
+                  {application.coverLetterHref ? (
                     <a
-                      href={application.coverLetterPath}
-                      className="text-[#00AEEF] hover:underline text-sm font-medium"
+                      href={application.coverLetterHref}
+                      className="hover:underline text-sm font-medium"
+                      style={{ color: '#12B6D6' }}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Download
+                      Open
                     </a>
-                  </div>
-                )}
-                {application.portfolioUrl && (
-                  <div className="flex justify-between items-center p-3.5 bg-gray-50 hover:bg-blue-50/40 rounded-xl border border-gray-100 transition-colors duration-200">
-                    <span className="text-gray-900 text-sm font-medium">🔗 Portfolio URL</span>
-                    <a
-                      href={application.portfolioUrl}
-                      className="text-[#00AEEF] hover:underline text-sm font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Visit
-                    </a>
-                  </div>
-                )}
+                  ) : (
+                    <span className="text-sm font-medium" style={{ color: '#9BAAB8' }}>N/A</span>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-xl p-4 mt-6">
-              <span className="text-blue-500 mt-0.5">ℹ️</span>
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> You cannot edit your application after submission. If you need to make changes, please contact HR.
+            <div className="flex items-start gap-2.5 rounded-xl p-4 mt-6" style={{ backgroundColor: '#EEF9FB', border: '1px solid #B8EAF3' }}>
+              <span className="mt-0.5" style={{ color: '#12B6D6' }}>Note:</span>
+              <p className="text-sm text-[#0B2A4A]">
+                You cannot edit your application after submission. If you need to make changes, please contact HR.
               </p>
             </div>
           </div>

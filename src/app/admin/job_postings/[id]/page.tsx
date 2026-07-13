@@ -9,14 +9,10 @@
  */
  
 import AdminLayout from '@/components/admin/AdminLayout'
-import { components, PLACEHOLDER_JOBS } from '@/lib/admin-theme'
+import { components, PLACEHOLDER_JOBS, getJobStatus } from '@/lib/admin-theme'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
  
-// ─── Placeholder applicant data, keyed by job id ────────────────
-// TODO: replace with a real query: applications where job_posting_id = id,
-// joined with applicant profile info, ordered by date_applied ascending
-// (oldest first, per the HR's request).
 const PLACEHOLDER_APPLICANTS_FOR_JOB: Record<string, Array<{
   id: string
   name: string
@@ -41,9 +37,9 @@ const PLACEHOLDER_APPLICANTS_FOR_JOB: Record<string, Array<{
   '4': [
     { id: 'a10', name: 'Lautaro Martinez',dateApplied: '2026-05-21', stage: 'Initial Interview' },
   ],
+  '5': [],
 }
  
-// Maps a stage name to a badge style already defined in admin-theme.ts
 function getStageBadgeClass(stage: string) {
   switch (stage) {
     case 'Initial Interview':      return components.badge.initial
@@ -58,26 +54,29 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const { id } = await params
   const job = PLACEHOLDER_JOBS.find((j) => j.id === id)
  
-  // If someone navigates to a job id that doesn't exist, show Next.js's built-in 404
   if (!job) {
     notFound()
   }
- 
-  const applicants = PLACEHOLDER_APPLICANTS_FOR_JOB[id] ?? []
+
+  const status = getJobStatus(job.deadline)
+  const applicants = PLACEHOLDER_APPLICANTS_FOR_JOB[(await params).id] ?? []
  
   return (
     <AdminLayout>
  
-      {/* Back link + page header */}
       <Link href="/admin/job_postings" className={components.btnGhost}>
         ← Back to Job Postings
       </Link>
  
-      <div className="flex items-center justify-between mt-2">
+      <div className="flex items-center gap-3 mt-2">
         <h1 className={components.pageTitle}>{job.title}</h1>
+        <span className={`${components.badge.base} ${status === 'open' ? components.badge.open : components.badge.closed}`}>
+          {status === 'open' ? 'Open' : 'Closed'}
+        </span>
       </div>
+
       <p className="text-sm text-[#8fa3b0] dark:text-[#6b8fa3]">
-        Posted on {job.datePosted}
+        Posted on {job.datePosted} &middot; Deadline: {job.deadline ?? 'No deadline'}
       </p>
       <hr className={components.pageDivider} />
  
@@ -104,8 +103,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-[#132435]">
-              {/* Sorted oldest-first since data above is already in that order;
-                  once real data comes from the backend, sort by dateApplied ascending there. */}
               {applicants.map((applicant) => (
                 <tr key={applicant.id} className={components.tableRow}>
                   <td className={components.tableCell}>{applicant.name}</td>
@@ -116,7 +113,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                     </span>
                   </td>
                   <td className={components.tableCell}>
-                    {/* TODO: link to /admin/applicants/[applicantId] once that page exists */}
                     <Link href="/admin/applicants" className={components.btnOutlineSm}>
                       View Profile
                     </Link>

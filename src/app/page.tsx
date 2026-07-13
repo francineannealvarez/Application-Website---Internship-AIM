@@ -845,7 +845,7 @@ export default function HomePage() {
           <div className="relative overflow-hidden" style={{ borderRadius: '14px', animation: 'heroPop 0.7s 0.1s cubic-bezier(0.22,1,0.36,1) both' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/salt-mounds.png"
+              src="/salt-mounds.jpg"
               alt="Salt mounds — Arvin International, Philippines No. 1 salt provider"
               className="w-full object-cover"
               style={{ height: '400px', objectPosition: 'center center' }}
@@ -1088,7 +1088,7 @@ export default function HomePage() {
           <FadeSection className="relative overflow-hidden" style={{ borderRadius: '14px' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/salt-mounds.png"
+              src="/salt-mounds.jpg"
               alt="Salt mounds — Arvin International"
               className="w-full object-cover"
               style={{ height: '380px', objectPosition: 'center center' }}

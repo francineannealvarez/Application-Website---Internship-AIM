@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
+import PageHeader from '@/components/admin/PageHeader'
 import { components } from '@/lib/admin-theme'
 
 // ─── Mock Data ──────────────────────────────────────────────
@@ -22,8 +23,7 @@ const MOCK_EMPLOYEES = [
 export default function EmployeesPage() {
   return (
     <AdminLayout>
-      <h1 className={components.pageTitle}>Employees (Probationary)</h1>
-      <hr className={components.pageDivider} />
+      <PageHeader title="Employees (Probationary)" />
 
       <div className="mt-6">
         {MOCK_EMPLOYEES.length === 0 ? (
