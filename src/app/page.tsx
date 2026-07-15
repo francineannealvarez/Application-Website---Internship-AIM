@@ -3,15 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { writeDemoUser, readDemoApplication } from '@/lib/demo-session';
 import {
   Trophy, MapPin, TrendingUp, ShieldCheck, Users, Banknote,
   UserPlus, ClipboardList, Upload, Send, Eye, Unlock,
   ChevronRight, Menu, X, Briefcase, Clock, Building2,
-  CheckCircle2, ArrowRight, LogIn, Search, Calendar,
+  CheckCircle2, ArrowRight, Search, Calendar,
 } from 'lucide-react';
 
-/* ─── DATA ──────────────────────────────────────────────────────────────── */
+/* ─── DATA ─────────────────────────────────────────────────────────────── */
 
 const NAV_LINKS = ['Home', 'Open Positions', 'How to Apply', 'Contact'];
 
@@ -48,20 +47,51 @@ const WHY_CARDS = [
   },
 ];
 
+// Job shape used by the UI (mapped from the API response)
 type Job = {
+  id: string;
   title: string;
   dept: string;
   location: string;
   type: string;
-  level: string;
   summary: string;
   responsibilities: string[];
   qualifications: string[];
-  postedDate: string;
-  deadline: string;
+  postedDate: string | null;
+  deadline: string | null;
 };
 
-function getRelativeTime(dateStr: string): string {
+// Raw shape returned by /api/positions
+type ApiPosition = {
+  id: string;
+  title: string;
+  department: string;
+  location: string;
+  employmentType: string;
+  description: string;
+  responsibilities: string[];
+  qualifications: string[];
+  postedDate: string | null;
+  deadline: string | null;
+};
+
+function mapApiPositionToJob(p: ApiPosition): Job {
+  return {
+    id: p.id,
+    title: p.title,
+    dept: p.department,
+    location: p.location,
+    type: p.employmentType,
+    summary: p.description,
+    responsibilities: p.responsibilities,
+    qualifications: p.qualifications,
+    postedDate: p.postedDate,
+    deadline: p.deadline,
+  };
+}
+
+function getRelativeTime(dateStr: string | null): string {
+  if (!dateStr) return 'Recently';
   const now = new Date();
   const posted = new Date(dateStr);
   const diffMs = now.getTime() - posted.getTime();
@@ -79,205 +109,11 @@ function getRelativeTime(dateStr: string): string {
   return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
 }
 
-function formatDeadline(dateStr: string): string {
+function formatDeadline(dateStr: string | null): string {
+  if (!dateStr) return 'Until filled';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
-
-const ALL_JOBS: Job[] = [
-  {
-    title: 'Marketing Specialist',
-    dept: 'Marketing',
-    location: 'Quezon City, Metro Manila',
-    type: 'Full-time',
-    level: 'Mid-level',
-    summary: "Drive brand awareness and marketing campaigns for Arvin International's product lines including salt, chemical, and agricultural products. Collaborate with the sales team to generate leads and grow market share.",
-    responsibilities: [
-      'Develop and execute marketing campaigns across digital and traditional channels',
-      'Create content for social media, print, and promotional materials',
-      'Coordinate with the sales team on product launches and promotions',
-      'Analyze campaign performance and prepare reports for management',
-      'Manage relationships with advertising agencies and media partners',
-    ],
-    qualifications: [
-      "Bachelor's degree in Marketing, Business Administration, or related field",
-      'At least 2 years of experience in marketing or advertising',
-      'Strong written and verbal communication skills',
-      'Proficient in MS Office; knowledge of Canva or Adobe Suite is a plus',
-      'Highly organized, creative, and results-driven',
-    ],
-    postedDate: '2026-07-09T05:00:00',
-    deadline: '2026-08-15',
-  },
-  {
-    title: 'Sales Representative',
-    dept: 'Sales',
-    location: 'Multiple Locations Nationwide',
-    type: 'Full-time',
-    level: 'Entry to Mid-level',
-    summary: "Grow Arvin International's client base by selling our salt, chemical, and agricultural products to businesses across your assigned territory. Build lasting relationships with distributors, retailers, and industrial clients.",
-    responsibilities: [
-      'Prospect and acquire new business accounts in the assigned territory',
-      'Meet or exceed monthly and quarterly sales targets',
-      'Maintain strong relationships with existing clients and distributors',
-      'Present product offerings and negotiate contracts',
-      'Submit regular sales reports and forecasts to the Sales Manager',
-    ],
-    qualifications: [
-      "Bachelor's degree in any Business-related course",
-      'Prior sales experience preferred but not required — we train motivated individuals',
-      'Excellent interpersonal and negotiation skills',
-      'Willing to travel within the assigned territory',
-      'Self-motivated with a competitive drive to succeed',
-    ],
-    postedDate: '2026-07-08T10:00:00',
-    deadline: '2026-08-10',
-  },
-  {
-    title: 'Business Development Manager',
-    dept: 'Business Development',
-    location: 'Head Office, Metro Manila',
-    type: 'Full-time',
-    level: 'Senior-level',
-    summary: 'Lead strategic growth initiatives for Arvin International by identifying new market opportunities, forging key partnerships, and expanding our footprint in chemical and agricultural product distribution.',
-    responsibilities: [
-      'Identify and pursue new business opportunities in target industries',
-      'Build and manage partnerships with key accounts, suppliers, and distributors',
-      'Develop go-to-market strategies for new product lines',
-      'Lead contract negotiations and close high-value deals',
-      'Collaborate with senior leadership on growth strategy and planning',
-    ],
-    qualifications: [
-      "Bachelor's degree in Business, Economics, or related field; MBA is an advantage",
-      'At least 5 years of experience in business development or strategic sales',
-      'Strong network in the manufacturing, distribution, or agri-chemical sectors',
-      'Excellent leadership, analytical, and presentation skills',
-      'Proven track record of meeting revenue targets',
-    ],
-    postedDate: '2026-07-07T09:00:00',
-    deadline: '2026-08-20',
-  },
-  {
-    title: 'Logistics Coordinator',
-    dept: 'Operations',
-    location: 'Nationwide (Various Depots)',
-    type: 'Full-time',
-    level: 'Entry to Mid-level',
-    summary: "Coordinate and oversee the movement of goods across Arvin International's 16-warehouse distribution network. Ensure timely deliveries and accurate inventory management.",
-    responsibilities: [
-      'Coordinate inbound and outbound shipments across all warehouse locations',
-      'Monitor inventory levels and trigger replenishment orders',
-      'Liaise with trucking partners and third-party logistics providers',
-      'Maintain accurate logistics records and prepare delivery reports',
-      'Resolve shipping discrepancies and escalate issues as needed',
-    ],
-    qualifications: [
-      "Bachelor's degree in Supply Chain Management, Industrial Engineering, or related field",
-      'Knowledge of warehouse operations and logistics processes',
-      'Strong organizational and problem-solving skills',
-      'Proficient in Microsoft Excel and logistics software',
-      'Willing to be assigned to any depot location',
-    ],
-    postedDate: '2026-07-05T09:00:00',
-    deadline: '2026-08-05',
-  },
-  {
-    title: 'Accounting Staff',
-    dept: 'Finance',
-    location: 'Head Office, Metro Manila',
-    type: 'Full-time',
-    level: 'Entry-level',
-    summary: "Support the Finance team in maintaining accurate financial records, processing transactions, and preparing reports that guide the company's day-to-day financial operations.",
-    responsibilities: [
-      'Record and reconcile daily financial transactions',
-      'Prepare accounts payable and receivable reports',
-      'Assist in month-end and year-end closing activities',
-      'Ensure compliance with BIR regulations and internal policies',
-      'Respond to finance-related inquiries from internal teams',
-    ],
-    qualifications: [
-      "Bachelor's degree in Accountancy, Financial Management, or related course",
-      'CPA license is a plus but not required',
-      'Keen attention to detail and strong numerical aptitude',
-      'Proficient in MS Excel and accounting software (QuickBooks, SAP, or similar)',
-      'Fresh graduates are welcome to apply',
-    ],
-    postedDate: '2026-07-09T03:00:00',
-    deadline: '2026-08-12',
-  },
-  {
-    title: 'Warehouse Supervisor',
-    dept: 'Operations',
-    location: 'Nationwide (Warehouse Assignments)',
-    type: 'Full-time',
-    level: 'Mid to Senior-level',
-    summary: "Lead day-to-day warehouse operations to ensure efficient storage, handling, and dispatch of Arvin International's products. Maintain safety standards and team productivity.",
-    responsibilities: [
-      'Supervise warehouse staff and daily operations including receiving and dispatch',
-      'Ensure accurate inventory counts and stock movement documentation',
-      'Maintain a safe, clean, and organized warehouse environment',
-      'Coordinate with the logistics team for on-time delivery schedules',
-      'Train and evaluate warehouse personnel performance',
-    ],
-    qualifications: [
-      "Bachelor's degree in any course; Industrial Engineering preferred",
-      'At least 3 years of warehouse supervisory experience',
-      'Strong leadership and team management skills',
-      'Familiarity with warehouse management systems (WMS)',
-      'Physically fit and willing to work on-site',
-    ],
-    postedDate: '2026-07-02T09:00:00',
-    deadline: '2026-08-01',
-  },
-  {
-    title: 'Clerk',
-    dept: 'Operations',
-    location: 'Nationwide (Warehouse Assignments)',
-    type: 'Full-time',
-    level: 'Entry-level',
-    summary: "Support day-to-day warehouse and office operations by maintaining accurate records, processing paperwork, and assisting with inventory documentation for Arvin International's distribution network.",
-    responsibilities: [
-      'Prepare, file, and maintain accurate warehouse and office records',
-      'Process delivery receipts, invoices, and inventory documentation',
-      'Assist in encoding and updating inventory and stock movement data',
-      'Coordinate with warehouse staff to ensure accurate documentation of incoming and outgoing goods',
-      'Perform other clerical and administrative tasks as assigned',
-    ],
-    qualifications: [
-      "Bachelor's degree or at least 2 years in college; fresh graduates are welcome to apply",
-      'Basic knowledge of office and clerical procedures',
-      'Proficient in MS Office (Word, Excel)',
-      'Keen attention to detail and good organizational skills',
-      'Willing to be assigned to any warehouse location',
-    ],
-    postedDate: '2026-07-09T02:00:00',
-    deadline: '2026-08-08',
-  },
-  {
-    title: 'Checker',
-    dept: 'Operations',
-    location: 'Nationwide (Warehouse Assignments)',
-    type: 'Full-time',
-    level: 'Entry-level',
-    summary: "Verify and inspect incoming and outgoing shipments to ensure accuracy and quality control across Arvin International's warehouse operations, helping maintain reliable inventory records.",
-    responsibilities: [
-      'Inspect and verify quantity and quality of incoming and outgoing goods',
-      'Cross-check delivery items against purchase orders and shipping documents',
-      'Report discrepancies, damages, or shortages to the warehouse supervisor',
-      'Maintain accurate checking logs and inventory count sheets',
-      'Assist in physical inventory counts and stock audits',
-    ],
-    qualifications: [
-      "Bachelor's degree or at least 2 years in college; fresh graduates are welcome to apply",
-      'Keen attention to detail and strong numerical accuracy',
-      'Basic knowledge of inventory and warehouse procedures',
-      'Physically fit and willing to work on-site',
-      'Willing to be assigned to any warehouse location',
-    ],
-    postedDate: '2026-07-09T06:00:00',
-    deadline: '2026-08-08',
-  },
-];
 
 const HOW_STEPS = [
   { icon: UserPlus, title: 'Register', desc: 'Create your applicant account using your email address.' },
@@ -288,7 +124,7 @@ const HOW_STEPS = [
   { icon: Unlock, title: 'Complete Requirements', desc: 'If shortlisted, your portal unlocks next steps and required documents.' },
 ];
 
-/* ─── HELPERS ───────────────────────────────────────────────────────────── */
+/* ─── HELPERS ──────────────────────────────────────────────────────────── */
 
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
@@ -337,128 +173,7 @@ function FadeSection({
   );
 }
 
-/* ─── AUTH MODAL (no backend yet — logs to console only) ───────────────── */
-
-function AuthModal({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', h);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', h);
-      document.body.style.overflow = '';
-    };
-  }, [onClose]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    const application = readDemoApplication();
-    if (!application) {
-      setError("We couldn't find an application under that name and email. Please apply first.");
-      return;
-    }
-
-    const emailMatches = application.email.trim().toLowerCase() === email.trim().toLowerCase();
-    const nameMatches = application.fullName.trim().toLowerCase() === fullName.trim().toLowerCase();
-    if (!emailMatches || !nameMatches) {
-      setError('Please enter the same name and email address you used when you applied.');
-      return;
-    }
-
-    writeDemoUser({ id: '2', name: application.fullName, email: application.email, role: 'APPLICANT' });
-    onClose();
-    router.push('/dashboard');
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(11,42,74,0.6)', backdropFilter: 'blur(6px)' }}
-      onClick={onClose}
-    >
-      <div
-        className="bg-white w-full max-w-md"
-        style={{ borderRadius: '14px', animation: 'slideUp 0.28s cubic-bezier(0.22,1,0.36,1)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-7 pt-6 pb-4" style={{ borderBottom: '1px solid #E5E9EC' }}>
-          <div className="flex items-center gap-2">
-            <LogIn size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
-            <h2 className="text-lg font-bold" style={{ color: '#0B2A4A' }}>
-              Log In to Your Account
-            </h2>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <X size={18} style={{ color: '#6B7A8D' }} />
-          </button>
-        </div>
-
-        <form className="px-7 py-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-          <p className="text-xs -mt-1" style={{ color: '#6B7A8D' }}>
-            Enter the same full name and email address you used on your application.
-          </p>
-          <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Juan dela Cruz"
-              className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
-              style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
-              onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
-              onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#0B2A4A' }}>
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@email.com"
-              className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
-              style={{ border: '1px solid #E5E9EC', borderRadius: '8px', color: '#0B2A4A', backgroundColor: '#F7F9FA' }}
-              onFocus={(e) => (e.target.style.borderColor = '#12B6D6')}
-              onBlur={(e) => (e.target.style.borderColor = '#E5E9EC')}
-            />
-          </div>
-          {error && (
-            <p className="text-xs" style={{ color: '#DC2626' }}>{error}</p>
-          )}
-          <button
-            type="submit"
-            className="w-full py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 mt-1"
-            style={{ backgroundColor: '#0B2A4A', borderRadius: '8px' }}
-          >
-            Log In
-          </button>
-          <p className="text-center text-xs" style={{ color: '#9BAAB8' }}>
-            {"Don't have an application yet? "}
-            <Link href="/apply" onClick={onClose} className="font-semibold underline" style={{ color: '#12B6D6' }}>
-              Apply Now
-            </Link>
-          </p>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ─── JOB MODAL ─────────────────────────────────────────────────────────── */
+/* ─── JOB MODAL ────────────────────────────────────────────────────────── */
 
 function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
   useEffect(() => {
@@ -487,7 +202,7 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
         <div className="sticky top-0 bg-white z-10 flex items-start justify-between gap-4 px-7 py-5" style={{ borderBottom: '1px solid #E5E9EC' }}>
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#12B6D6' }}>
-              {job.dept} · {job.level}
+              {job.dept}
             </p>
             <h2 className="text-xl font-bold" style={{ color: '#0B2A4A' }}>
               {job.title}
@@ -527,25 +242,26 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
             </p>
           </div>
 
-
           {[
             { title: 'Key Responsibilities', items: job.responsibilities },
             { title: 'Qualifications', items: job.qualifications },
-          ].map(({ title, items }) => (
-            <div key={title}>
-              <h3 className="text-sm font-semibold mb-3" style={{ color: '#0B2A4A' }}>
-                {title}
-              </h3>
-              <ul className="flex flex-col gap-2.5">
-                {items.map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm" style={{ color: '#6B7A8D' }}>
-                    <CheckCircle2 size={15} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          ]
+            .filter(({ items }) => items.length > 0)
+            .map(({ title, items }) => (
+              <div key={title}>
+                <h3 className="text-sm font-semibold mb-3" style={{ color: '#0B2A4A' }}>
+                  {title}
+                </h3>
+                <ul className="flex flex-col gap-2.5">
+                  {items.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5 text-sm" style={{ color: '#6B7A8D' }}>
+                      <CheckCircle2 size={15} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
 
           <Link
             href="/apply"
@@ -562,7 +278,15 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
 
 /* ─── ALL POSITIONS MODAL ──────────────────────────────────────────────── */
 
-function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelect: (job: Job) => void }) {
+function AllPositionsModal({
+  jobs,
+  onClose,
+  onSelect,
+}: {
+  jobs: Job[];
+  onClose: () => void;
+  onSelect: (job: Job) => void;
+}) {
   const [search, setSearch] = useState('');
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -576,7 +300,7 @@ function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelec
     };
   }, [onClose]);
 
-  const filtered = ALL_JOBS.filter(
+  const filtered = jobs.filter(
     (j) => j.title.toLowerCase().includes(search.toLowerCase()) || j.dept.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -626,7 +350,7 @@ function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelec
           )}
           {filtered.map((job) => (
             <div
-              key={job.title}
+              key={job.id}
               className="flex items-center justify-between gap-4 p-5 rounded-xl transition-all cursor-pointer hover:shadow-sm"
               style={{ border: '1px solid #E5E9EC', backgroundColor: '#fff' }}
               onClick={() => {
@@ -648,10 +372,6 @@ function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelec
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs" style={{ color: '#9BAAB8' }}>
                       {job.dept}
-                    </span>
-                    <span style={{ color: '#D1DAE3' }}>·</span>
-                    <span className="text-xs" style={{ color: '#9BAAB8' }}>
-                      {job.level}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
@@ -682,16 +402,41 @@ function AllPositionsModal({ onClose, onSelect }: { onClose: () => void; onSelec
   );
 }
 
-/* ─── MAIN LANDING PAGE ─────────────────────────────────────────────────── */
+/* ─── MAIN LANDING PAGE ────────────────────────────────────────────────── */
 
 export default function HomePage() {
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAllJobs, setShowAllJobs] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
   const positionsRef = useRef<HTMLElement>(null);
   const howItWorksRef = useRef<HTMLElement>(null);
   const contactRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/positions')
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Failed to load positions');
+        return (await res.json()) as ApiPosition[];
+      })
+      .then((data) => {
+        if (active) setJobs(data.map(mapApiPositionToJob));
+      })
+      .catch((error) => {
+        console.error('Error loading positions:', error);
+      })
+      .finally(() => {
+        if (active) setJobsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const scrollToPositions = () => {
     positionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -759,7 +504,7 @@ export default function HomePage() {
 
           <div className="hidden md:flex items-center gap-4">
             <button
-              onClick={() => setShowLoginModal(true)}
+              onClick={() => router.push('/login')}
               className="text-sm font-semibold text-white px-4 py-2 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: '#0B2A4A', borderRadius: '6px' }}
             >
@@ -789,8 +534,8 @@ export default function HomePage() {
             <hr style={{ borderColor: '#E5E9EC' }} />
             <button
               onClick={() => {
-                setShowLoginModal(true);
                 setMobileOpen(false);
+                router.push('/login');
               }}
               className="text-sm font-semibold text-white px-4 py-2 w-full"
               style={{ backgroundColor: '#0B2A4A', borderRadius: '6px' }}
@@ -952,81 +697,97 @@ export default function HomePage() {
                 Open Positions
               </h2>
             </div>
-            <button
-              onClick={() => setShowAllJobs(true)}
-              className="text-sm font-semibold px-5 py-2.5 flex items-center gap-2 transition-all hover:opacity-90"
-              style={{ backgroundColor: '#0B2A4A', color: '#fff', borderRadius: '8px' }}
-            >
-              View All Positions <ArrowRight size={14} />
-            </button>
+            {jobs.length > 3 && (
+              <button
+                onClick={() => setShowAllJobs(true)}
+                className="text-sm font-semibold px-5 py-2.5 flex items-center gap-2 transition-all hover:opacity-90"
+                style={{ backgroundColor: '#0B2A4A', color: '#fff', borderRadius: '8px' }}
+              >
+                View All Positions <ArrowRight size={14} />
+              </button>
+            )}
           </FadeSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5" style={{ gridAutoRows: '1fr' }}>
-            {ALL_JOBS.slice(0, 3).map((job, i) => (
-              <FadeSection key={job.title} style={{ transitionDelay: `${i * 0.08}s`, height: '100%' }}>
-                <div className="card-lift bg-white flex flex-col gap-5 p-7 h-full" style={{ border: '1px solid #E5E9EC', borderRadius: '12px' }}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div
-                      className="w-11 h-11 flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)', borderRadius: '10px' }}
-                    >
-                      <Briefcase size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+          {jobsLoading && (
+            <p className="text-sm text-center py-10" style={{ color: '#9BAAB8' }}>
+              Loading open positions...
+            </p>
+          )}
+
+          {!jobsLoading && jobs.length === 0 && (
+            <p className="text-sm text-center py-10" style={{ color: '#9BAAB8' }}>
+              No open positions right now. Please check back soon.
+            </p>
+          )}
+
+          {!jobsLoading && jobs.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5" style={{ gridAutoRows: '1fr' }}>
+              {jobs.slice(0, 3).map((job, i) => (
+                <FadeSection key={job.id} style={{ transitionDelay: `${i * 0.08}s`, height: '100%' }}>
+                  <div className="card-lift bg-white flex flex-col gap-5 p-7 h-full" style={{ border: '1px solid #E5E9EC', borderRadius: '12px' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div
+                        className="w-11 h-11 flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)', borderRadius: '10px' }}
+                      >
+                        <Briefcase size={18} style={{ color: '#12B6D6' }} strokeWidth={1.5} />
+                      </div>
+                      <span
+                        className="text-xs font-semibold px-2.5 py-1 whitespace-nowrap"
+                        style={{ color: '#12B6D6', backgroundColor: '#EEF9FB', borderRadius: '5px', border: '1px solid #B8EAF3' }}
+                      >
+                        {job.type}
+                      </span>
                     </div>
-                    <span
-                      className="text-xs font-semibold px-2.5 py-1 whitespace-nowrap"
-                      style={{ color: '#12B6D6', backgroundColor: '#EEF9FB', borderRadius: '5px', border: '1px solid #B8EAF3' }}
+
+                    <div className="flex-1 flex flex-col gap-2">
+                      <h3 className="text-base font-bold leading-snug" style={{ color: '#0B2A4A' }}>
+                        {job.title}
+                      </h3>
+                      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#9BAAB8' }}>
+                        {job.dept}
+                      </p>
+                      <p className="text-sm leading-relaxed mt-1" style={{ color: '#6B7A8D' }}>
+                        {job.summary.slice(0, 100)}…
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#9BAAB8' }}>
+                      <MapPin size={12} strokeWidth={1.5} />
+                      {job.location}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-1" style={{ color: '#9BAAB8' }}>
+                      <span className="flex items-center gap-1.5">
+                        <Clock size={12} strokeWidth={1.5} />
+                        Posted {getRelativeTime(job.postedDate)}
+                      </span>
+                      <span className="flex items-center gap-1.5" style={{ color: '#DC2626' }}>
+                        <Calendar size={12} strokeWidth={1.5} />
+                        Apply by {formatDeadline(job.deadline)}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedJob(job)}
+                      className="mt-auto text-sm font-semibold py-2.5 flex items-center justify-center gap-2 transition-all group"
+                      style={{ border: '1.5px solid #0B2A4A', color: '#0B2A4A', backgroundColor: 'transparent', borderRadius: '8px' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#0B2A4A';
+                        e.currentTarget.style.color = '#fff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = '#0B2A4A';
+                      }}
                     >
-                      {job.type}
-                    </span>
+                      View Details <ArrowRight size={14} />
+                    </button>
                   </div>
-
-                  <div className="flex-1 flex flex-col gap-2">
-                    <h3 className="text-base font-bold leading-snug" style={{ color: '#0B2A4A' }}>
-                      {job.title}
-                    </h3>
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#9BAAB8' }}>
-                      {job.dept}
-                    </p>
-                    <p className="text-sm leading-relaxed mt-1" style={{ color: '#6B7A8D' }}>
-                      {job.summary.slice(0, 100)}…
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#9BAAB8' }}>
-                    <MapPin size={12} strokeWidth={1.5} />
-                    {job.location}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-1" style={{ color: '#9BAAB8' }}>
-                    <span className="flex items-center gap-1.5">
-                      <Clock size={12} strokeWidth={1.5} />
-                      Posted {getRelativeTime(job.postedDate)}
-                    </span>
-                    <span className="flex items-center gap-1.5" style={{ color: '#DC2626' }}>
-                      <Calendar size={12} strokeWidth={1.5} />
-                      Apply by {formatDeadline(job.deadline)}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => setSelectedJob(job)}
-                    className="mt-auto text-sm font-semibold py-2.5 flex items-center justify-center gap-2 transition-all group"
-                    style={{ border: '1.5px solid #0B2A4A', color: '#0B2A4A', backgroundColor: 'transparent', borderRadius: '8px' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#0B2A4A';
-                      e.currentTarget.style.color = '#fff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = '#0B2A4A';
-                    }}
-                  >
-                    View Details <ArrowRight size={14} />
-                  </button>
-                </div>
-              </FadeSection>
-            ))}
-          </div>
+                </FadeSection>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1218,8 +979,9 @@ export default function HomePage() {
 
       {/* ── MODALS ── */}
       {selectedJob && <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
-      {showLoginModal && <AuthModal onClose={() => setShowLoginModal(false)} />}
-      {showAllJobs && <AllPositionsModal onClose={() => setShowAllJobs(false)} onSelect={(job) => setSelectedJob(job)} />}
+      {showAllJobs && (
+        <AllPositionsModal jobs={jobs} onClose={() => setShowAllJobs(false)} onSelect={(job) => setSelectedJob(job)} />
+      )}
     </div>
   );
 }

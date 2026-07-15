@@ -12,8 +12,6 @@ import {
   LogOut, Building2, User, Check, Banknote
 } from 'lucide-react';
 
-import { getUserApplication, mockPositions } from '@/lib/mockData';
-import { clearDemoUser, readDemoUser, readDemoApplication, type DemoUser } from '@/lib/demo-session';
 import PersonalDataSheetContent from '@/components/dashboard/PersonalDataSheetContent';
 import AssessmentContent from '@/components/dashboard/AssessmentContent';
 import BackgroundCheckContent from '@/components/dashboard/BackgroundCheckContent';
@@ -29,8 +27,38 @@ function cn(...classes: (string | undefined | false | null)[]) {
 
 type DocStatus = 'Submitted' | 'Pending';
 
+type RealApplicationRecord = {
+  id: string;
+  status: string;
+  stage: string;
+  full_name?: string;
+  email?: string;
+  date_applied?: string | Date;
+  job_postings?: { title?: string; department?: string; employment_type?: string } | null;
+};
+
 const STAGE_LABELS = ['Submitted', 'Under Review', 'Result'];
 const STAGE_ICONS = [FileText, Clock, Sparkles] as const;
+
+function statusToStage(status: string): number {
+  const s = (status || '').toLowerCase();
+  switch (s) {
+    case 'active':
+    case 'submitted':
+      return 0;
+    case 'under_review':
+    case 'reviewing':
+      return 1;
+    case 'shortlisted':
+    case 'passed':
+      return 2;
+    case 'hired':
+    case 'rejected':
+      return 3;
+    default:
+      return 0;
+  }
+}
 
 function getStepState(stepIdx: number, stage: number): 'completed' | 'active' | 'pending' {
   if (stepIdx === 0) return stage >= 1 ? 'completed' : 'active';
@@ -58,7 +86,7 @@ const STATUS_BANNER_STYLE: Record<number, React.CSSProperties> = {
   3: {}
 };
 
-function ApplicationStatusCard({ stage, onContinue, setApplicationStage }: { stage: number; onContinue: () => void; setApplicationStage: (n: number) => void; }) {
+function ApplicationStatusCard({ stage, onContinue }: { stage: number; onContinue: () => void; }) {
   const bannerConfig = STATUS_BANNER[stage] ?? { cls: '', icon: null, text: '' };
   const bannerStyle = STATUS_BANNER_STYLE[stage] ?? {};
   const bannerExtraCls = stage === 2 ? 'bg-amber-50 border border-amber-200' : stage === 3 ? 'bg-green-50 border border-green-200' : '';
@@ -78,11 +106,6 @@ function ApplicationStatusCard({ stage, onContinue, setApplicationStage }: { sta
           <Link href="/application" className="text-xs px-3 py-1.5 rounded-lg border text-[#0B2A4A] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium flex items-center gap-1.5" style={{ borderColor: '#E5E9EC' }}>
             <FileText className="w-3.5 h-3.5" style={{ color: '#6B7A8D' }} /> View Application
           </Link>
-          {stage < 3 && (
-            <button onClick={() => setApplicationStage(Math.min(stage + 1, 3))} className="text-xs px-3 py-1.5 rounded-lg border border-dashed text-[#9BAAB8] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium" style={{ borderColor: '#D1DAE3' }}>
-              Simulate Next Stage &rarr;
-            </button>
-          )}
         </div>
       </div>
       <div className="p-6 sm:p-8">
@@ -149,8 +172,6 @@ const STEP_DETAILS = [
   { date: 'July 20, 2026', time: '10:00 AM', venue: null, platform: null, instructions: 'Please wait for a message from HR regarding your Initial Interview schedule. Depending on your assigned interviewer, this may be conducted via Microsoft Teams, face-to-face, or a Viber call - make sure your Viber, email, and phone are all reachable so HR can reach you through whichever mode is assigned.' },
   { date: 'July 29, 2025', time: '2:00 PM', venue: 'Arvin International Marketing Inc. - 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City', platform: null, instructions: 'This is a technical interview with your prospective department head. Review your application thoroughly and be prepared to discuss your relevant experience in detail.' },
 ];
-
-// ---- Requirements data ----
 
 const REQUIREMENTS_MAIN = [
   { label: 'Medical Certificate', note: 'From an accredited government physician', Icon: ClipboardCheck },
@@ -506,10 +527,8 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
   );
 }
 
-function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete, applicantName, onWithdraw }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void;  applicantName: string; onWithdraw: (reason: string) => void; }) {
+function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete, applicantName, onWithdraw, applicationId, positionTitle, dateApplied }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void;  applicantName: string; onWithdraw: (reason: string) => void; applicationId: string | null; positionTitle: string; dateApplied?: string | Date | null; }) {
   const totalSteps = steps.length;
-  const [expandedStep, setExpandedStep] = useState<number | null>(completedSteps < totalSteps ? completedSteps : null);
-  const handleRowClick = (idx: number) => { if (idx > completedSteps) return; setExpandedStep(prev => prev === idx ? null : idx); };
   const circleState = (idx: number): 'completed' | 'active' | 'locked' => { if (idx < completedSteps) return 'completed'; if (idx === completedSteps) return 'active'; return 'locked'; };
   return (
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-[#E5E9EC] overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
@@ -566,7 +585,7 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
                     {() => <StepDetailContent stepIdx={0} isCurrent={isCurrent} />}
                   </StepGate>
                 ) : step.key === 'pds' ? (
-                  <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
+                  <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} applicationId={applicationId} positionTitle={positionTitle} applicationDate={dateApplied} />
                 ) : step.key === 'sri' ? (
                   <StepGate stepLabel="SRA (Verbal Test)" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
                     {(markSubmitted) => <SRAContent isCurrent={isCurrent} onSubmit={markSubmitted} />}
@@ -575,7 +594,7 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
                   <AssessmentContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
                 ) : step.key === 'background' ? (
                   <StepGate stepLabel="Character & Background Check" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {(markSubmitted) => <BackgroundCheckContent isCurrent={isCurrent} onSubmit={markSubmitted} />}
+                    {(markSubmitted) => <BackgroundCheckContent isCurrent={isCurrent} onSubmit={markSubmitted} fullName={applicantName} positionTitle={positionTitle} />}
                   </StepGate>
                 ) : step.key === 'department' ? (
                   <StepGate stepLabel="Final Interview" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
@@ -637,20 +656,47 @@ function CongratsModal({ open, onClose }: { open: boolean; onClose: () => void }
 }
 
 export default function ApplicantDashboard() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const [demoUser] = useState<DemoUser | null>(() => (typeof window !== 'undefined' ? readDemoUser() : null));
-  const application = (session?.user?.id ?? demoUser?.id) ? getUserApplication((session?.user?.id ?? demoUser?.id) as string) : undefined;
-  const [demoApplication] = useState(() => (typeof window !== 'undefined' ? readDemoApplication() : null));
+  const { data: session, status } = useSession();
+  const [application, setApplication] = useState<RealApplicationRecord | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const positionTitle =
-    demoApplication?.positionTitle ||
-    mockPositions.find((p) => p.id === application?.positionId)?.title ||
-    '';
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+      return;
+    }
+    if (status === 'authenticated' && session?.user?.role === 'HR_ADMIN') {
+      router.push('/hr/dashboard');
+    }
+  }, [status, session, router]);
+
+  const fetchApplication = React.useCallback(() => {
+    if (!session?.user?.email) return;
+    fetch(`/api/applications?email=${encodeURIComponent(session.user.email)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setApplication(data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => {
+    fetchApplication();
+  }, [fetchApplication]);
+
+  // Poll every 15 seconds so the applicant sees HR-side stage updates
+  // without needing to manually refresh the page.
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    const interval = setInterval(fetchApplication, 15000);
+    return () => clearInterval(interval);
+  }, [session, fetchApplication]);
+
+  const positionTitle = application?.job_postings?.title || '';
   const includeSri = positionTitle === 'Clerk' || positionTitle === 'Checker';
   const steps = buildHiringSteps(includeSri);
+  const applicationStage = statusToStage(application?.status || '');
 
-  const [applicationStage, setApplicationStage] = useState(0);
   const [showHiringProcess, setShowHiringProcess] = useState(false);
   const [hiringCompletedSteps, setHiringCompletedSteps] = useState(0);
   const [docStatuses, setDocStatuses] = useState<DocStatus[]>(Array(REQUIREMENTS_TOTAL).fill('Pending'));
@@ -664,12 +710,6 @@ export default function ApplicantDashboard() {
     setWithdrawReason(reason);
     setWithdrawn(true);
   };
-
-  useEffect(() => {
-    if (status === 'unauthenticated' && !demoUser) {
-      router.push('/');
-    }
-  }, [status, demoUser, router]);
 
   const handleDocUpload = (idx: number, file: File) => {
     const reader = new FileReader();
@@ -692,10 +732,15 @@ export default function ApplicantDashboard() {
     });
   };
 
-  if (status === 'loading') return <div className="flex items-center justify-center h-screen" style={{ color: '#6B7A8D' }}>Loading...</div>;
-  if (!session && !demoUser) return null;
+  const handleLogout = () => {
+    void signOut({ callbackUrl: '/' });
+  };
 
-  const name = session?.user?.name || demoUser?.name || 'Applicant';
+  if (status === 'loading' || status === 'unauthenticated' || loading) {
+    return <div className="flex items-center justify-center h-screen" style={{ color: '#6B7A8D' }}>Loading...</div>;
+  }
+
+  const name = session?.user?.name || 'Applicant';
   const firstName = name.split(' ')[0];
 
   return (
@@ -715,7 +760,7 @@ export default function ApplicantDashboard() {
               <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)', boxShadow: '0 0 0 2px #F7F9FA' }}><User className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
               <span className="hidden sm:block text-sm font-medium text-[#0B2A4A]">{name}</span>
             </div>
-            <button onClick={async () => { clearDemoUser(); if (session) { await signOut({ redirect: false }); } router.push('/'); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 active:scale-95 transition-all">
+            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 active:scale-95 transition-all">
               <LogOut className="w-3.5 h-3.5" /> Logout
             </button>
           </div>
@@ -741,9 +786,9 @@ export default function ApplicantDashboard() {
             <p className="text-sm" style={{ color: '#6B7A8D' }}>Thank you for your time and interest in Arvin International Marketing Inc. We hope to see your application again in the future.</p>
           </div>
         ) : showHiringProcess ? (
-          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} applicantName={name} onWithdraw={handleWithdraw} />
+          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} applicantName={name} onWithdraw={handleWithdraw} applicationId={application?.id ?? null} positionTitle={positionTitle} dateApplied={application?.date_applied ?? null} />
         ) : (
-          <ApplicationStatusCard stage={applicationStage} onContinue={() => setModalOpen(true)} setApplicationStage={setApplicationStage} />
+          <ApplicationStatusCard stage={applicationStage} onContinue={() => setModalOpen(true)} />
         )}
       </div>
 

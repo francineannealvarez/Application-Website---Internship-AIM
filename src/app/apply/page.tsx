@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Inter } from "next/font/google";
-import { writeDemoUser, writeDemoApplication } from "@/lib/demo-session";
-import { setDemoFiles } from "@/lib/demo-files";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   Upload, FileText, X, ChevronDown, CheckCircle2, Shield, Phone,
   Briefcase, Building2, ArrowRight, Info, Database, Settings, Share2,
@@ -22,45 +22,46 @@ const BG_LIGHT = "#F7F9FA";
 const ACCENT_BG = "#EEF9FB";
 const ACCENT_BORDER = "#B8EAF3";
 
-const POSITIONS = [
-  "Software Engineer",
-  "Product Manager",
-  "UI/UX Designer",
-  "Data Analyst",
-  "Marketing Specialist",
-  "Operations Manager",
-  "Sales Executive",
-  "Business Development Associate",
-  "Clerk",
-  "Checker",
-];
+// File upload constraints — accepted types + max size (in bytes).
+// 10 MB is a reasonable ceiling for resume/cover-letter PDFs and DOCX files;
+// most single/multi-page documents fall well under this even with images.
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ALLOWED_EXTENSIONS = [".pdf", ".docx"];
 
-// Map each position to its department (shown on the success screen)
-const DEPARTMENT_MAP: Record<string, string> = {
-  "Software Engineer": "Information Technology",
-  "Product Manager": "Product",
-  "UI/UX Designer": "Design",
-  "Data Analyst": "Data & Analytics",
-  "Marketing Specialist": "Marketing",
-  "Operations Manager": "Operations",
-  "Sales Executive": "Sales",
-  "Business Development Associate": "Business Development",
-  "Clerk": "Operations",
-  "Checker": "Operations",
-};
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
-// Employment type per position (defaults to Full-time for corporate roles)
-const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
-  "Software Engineer": "Full-time",
-  "Product Manager": "Full-time",
-  "UI/UX Designer": "Full-time",
-  "Data Analyst": "Full-time",
-  "Marketing Specialist": "Full-time",
-  "Operations Manager": "Full-time",
-  "Sales Executive": "Full-time",
-  "Business Development Associate": "Full-time",
-  "Clerk": "Full-time",
-  "Checker": "Full-time",
+// Validates extension + size. Returns an error message, or null if valid.
+function validateUploadedFile(f: File): string | null {
+  const nameLower = f.name.toLowerCase();
+  const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => nameLower.endsWith(ext));
+  if (!hasValidExt) {
+    return "Only PDF or DOCX files are accepted.";
+  }
+  if (f.size > MAX_FILE_SIZE_BYTES) {
+    return `File is too large (${formatFileSize(f.size)}). Max size is ${MAX_FILE_SIZE_MB} MB.`;
+  }
+  if (f.size === 0) {
+    return "This file appears to be empty.";
+  }
+  return null;
+}
+
+// Shape returned by GET /api/positions (see src/app/api/positions/route.ts)
+type Position = {
+  id: string;
+  title: string;
+  department: string;
+  location: string;
+  employmentType: string;
+  description: string;
+  responsibilities: string[];
+  qualifications: string[];
+  postedDate: string | null;
+  deadline: string | null;
 };
 
 // Format PH phone: auto-inserts spaces as user types
@@ -83,6 +84,7 @@ function isValidPHPhone(val: string) {
 }
 
 export default function ApplyPage() {
+  const router = useRouter();
   const [form, setForm] = useState({ fullName: "", email: "", phone: "+63 ", position: "" });
   const [file, setFile] = useState<File | null>(null);
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
@@ -92,9 +94,32 @@ export default function ApplyPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverLetterInputRef = useRef<HTMLInputElement>(null);
+
+  // Positions are fetched from the real API — no more hardcoded mock list.
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [positionsLoading, setPositionsLoading] = useState(true);
+  const [positionsError, setPositionsError] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/positions")
+      .then((res) => {
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        return res.json();
+      })
+      .then((data: Position[]) => setPositions(data))
+      .catch((err) => {
+        console.error("Failed to load positions:", err);
+        setPositionsError(true);
+      })
+      .finally(() => setPositionsLoading(false));
+  }, []);
+
+  // The position the applicant selected, resolved against the fetched list.
+  const selectedPosition = positions.find((p) => p.title === form.position);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -111,22 +136,47 @@ export default function ApplyPage() {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (!selectedPosition) { setErrors((prev) => ({ ...prev, position: "Please select a valid position." })); return; }
+
     setSubmitting(true);
-    writeDemoUser({ id: "2", name: form.fullName, email: form.email, role: "APPLICANT" });
-    writeDemoApplication({
-      fullName: form.fullName,
-      email: form.email,
-      phone: form.phone,
-      positionTitle: form.position,
-      employmentType: EMPLOYMENT_TYPE_MAP[form.position] || "Full-time",
-      resumeFileName: file?.name || "",
-      coverLetterFileName: coverLetterFile?.name || null,
-      submittedAt: new Date().toISOString(),
-    });
-    // Persist the actual files so the "View Application" page can display/open them.
-    await setDemoFiles(file, coverLetterFile);
-    setSubmitting(false);
-    setSubmitted(true);
+    setSubmitError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("fullName", form.fullName);
+      formData.append("email", form.email);
+      formData.append("positionId", selectedPosition.id);
+      formData.append("phoneNumber", form.phone);
+      if (file) formData.append("resume", file);
+
+      const res = await fetch("/api/applications", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to submit application");
+      }
+
+      // Auto sign in with the same credentials used to apply, so the
+      // applicant lands on their dashboard already authenticated.
+      const signInResult = await signIn("credentials", {
+        email: form.email,
+        password: form.fullName, // repurposed field — holds full name, see src/auth.ts
+        redirect: false,
+      });
+
+      if (!signInResult?.ok) {
+        console.error("Auto sign-in after application failed:", signInResult?.error);
+      }
+
+      setSubmitting(false);
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setSubmitting(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -140,16 +190,25 @@ export default function ApplyPage() {
   };
 
   const handleFile = (f: File) => {
-    if (f && (f.name.endsWith(".pdf") || f.name.endsWith(".docx"))) {
-      setFile(f);
-      setErrors((prev) => ({ ...prev, file: "" }));
+    const errorMsg = validateUploadedFile(f);
+    if (errorMsg) {
+      setErrors((prev) => ({ ...prev, file: errorMsg }));
+      setFile(null);
+      return;
     }
+    setFile(f);
+    setErrors((prev) => ({ ...prev, file: "" }));
   };
 
   const handleCoverLetterFile = (f: File) => {
-    if (f && (f.name.endsWith(".pdf") || f.name.endsWith(".docx"))) {
-      setCoverLetterFile(f);
+    const errorMsg = validateUploadedFile(f);
+    if (errorMsg) {
+      setErrors((prev) => ({ ...prev, coverLetter: errorMsg }));
+      setCoverLetterFile(null);
+      return;
     }
+    setCoverLetterFile(f);
+    setErrors((prev) => ({ ...prev, coverLetter: "" }));
   };
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -166,7 +225,7 @@ export default function ApplyPage() {
     if (f) handleCoverLetterFile(f);
   }, []);
 
-  const department = DEPARTMENT_MAP[form.position] || "General";
+  const department = selectedPosition?.department || "General";
 
   if (submitted) {
     return (
@@ -209,13 +268,14 @@ export default function ApplyPage() {
               </div>
             </div>
 
-            <Link
-              href="/dashboard"
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
               className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all duration-200 hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
               style={{ backgroundColor: NAVY }}
             >
               Go to My Dashboard <ArrowRight size={15} />
-            </Link>
+            </button>
           </div>
         </main>
         <Footer onPrivacy={() => setPrivacyOpen(true)} />
@@ -240,6 +300,12 @@ export default function ApplyPage() {
             </div>
 
             <form onSubmit={handleSubmit} noValidate className="px-6 py-6 space-y-5">
+              {submitError && (
+                <div className="p-3.5 rounded-xl text-sm" style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626" }}>
+                  {submitError}
+                </div>
+              )}
+
               <Field label="Full Name" error={errors.fullName}>
                 <input
                   type="text"
@@ -304,37 +370,59 @@ export default function ApplyPage() {
 
                   {positionOpen && (
                     <div
-                      className="absolute top-full mt-1.5 left-0 right-0 z-30 bg-white rounded-xl overflow-hidden py-1"
+                      className="absolute top-full mt-1.5 left-0 right-0 z-30 bg-white rounded-xl overflow-hidden py-1 max-h-64 overflow-y-auto"
                       style={{ border: `1px solid ${BORDER}`, boxShadow: "0 12px 32px rgba(11,42,74,0.12)" }}
                     >
-                      {POSITIONS.map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => { handleChange("position", p); setPositionOpen(false); }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 ${form.position === p ? "font-semibold" : ""}`}
-                          style={form.position === p ? { color: CYAN, background: ACCENT_BG } : { color: NAVY }}
-                        >
-                          {p}
-                        </button>
-                      ))}
+                      {positionsLoading ? (
+                        <div className="px-4 py-3 text-sm" style={{ color: MUTED }}>
+                          Loading positions...
+                        </div>
+                      ) : positionsError ? (
+                        <div className="px-4 py-3 text-sm" style={{ color: MUTED }}>
+                          Couldn&apos;t load positions. Please refresh the page.
+                        </div>
+                      ) : positions.length === 0 ? (
+                        <div className="px-4 py-3 text-sm" style={{ color: MUTED }}>
+                          No open positions available right now.
+                        </div>
+                      ) : (
+                        positions.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => { handleChange("position", p.title); setPositionOpen(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 ${form.position === p.title ? "font-semibold" : ""}`}
+                            style={form.position === p.title ? { color: CYAN, background: ACCENT_BG } : { color: NAVY }}
+                          >
+                            {p.title}
+                          </button>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
               </Field>
 
-              <Field label="Cover Letter (Optional)">
+              <Field label="Cover Letter (Optional)" error={errors.coverLetter}>
                 <input
                   ref={coverLetterInputRef}
                   type="file"
                   accept=".pdf,.docx"
                   className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverLetterFile(f); }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleCoverLetterFile(f);
+                    // Reset so selecting the same (invalid) file again still fires onChange.
+                    e.target.value = "";
+                  }}
                 />
                 {coverLetterFile ? (
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ border: `1px solid ${BORDER}`, backgroundColor: BG_LIGHT }}>
                     <FileText className="w-5 h-5 shrink-0" style={{ color: CYAN }} />
-                    <span className="text-sm font-medium truncate flex-1" style={{ color: NAVY }}>{coverLetterFile.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: NAVY }}>{coverLetterFile.name}</p>
+                      <p className="text-xs" style={{ color: MUTED }}>{formatFileSize(coverLetterFile.size)}</p>
+                    </div>
                     <button type="button" onClick={() => setCoverLetterFile(null)} className="shrink-0 transition-colors hover:text-red-600" style={{ color: MUTED }}>
                       <X className="w-4 h-4" />
                     </button>
@@ -347,8 +435,8 @@ export default function ApplyPage() {
                     onDrop={onCoverLetterDrop}
                     className={`flex flex-col items-center justify-center px-4 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-150 ${coverLetterDragging ? "scale-[1.01]" : ""}`}
                     style={{
-                      borderColor: coverLetterDragging ? CYAN : BORDER,
-                      backgroundColor: coverLetterDragging ? ACCENT_BG : BG_LIGHT,
+                      borderColor: coverLetterDragging ? CYAN : errors.coverLetter ? "#f87171" : BORDER,
+                      backgroundColor: coverLetterDragging ? ACCENT_BG : errors.coverLetter ? "#fef2f2" : BG_LIGHT,
                     }}
                   >
                     <Upload className="w-6 h-6 mb-2" style={{ color: coverLetterDragging ? CYAN : MUTED }} />
@@ -356,7 +444,7 @@ export default function ApplyPage() {
                       Drag &amp; drop your cover letter, or{" "}
                       <span className="font-semibold hover:underline" style={{ color: CYAN }}>browse files</span>
                     </p>
-                    <p className="text-xs mt-1" style={{ color: MUTED }}>PDF or DOCX &middot; Optional</p>
+                    <p className="text-xs mt-1" style={{ color: MUTED }}>PDF or DOCX &middot; Max {MAX_FILE_SIZE_MB} MB &middot; Optional</p>
                   </div>
                 )}
               </Field>
@@ -367,12 +455,20 @@ export default function ApplyPage() {
                   type="file"
                   accept=".pdf,.docx"
                   className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFile(f);
+                    // Reset so selecting the same (invalid) file again still fires onChange.
+                    e.target.value = "";
+                  }}
                 />
                 {file ? (
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ border: `1px solid ${BORDER}`, backgroundColor: BG_LIGHT }}>
                     <FileText className="w-5 h-5 shrink-0" style={{ color: CYAN }} />
-                    <span className="text-sm font-medium truncate flex-1" style={{ color: NAVY }}>{file.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: NAVY }}>{file.name}</p>
+                      <p className="text-xs" style={{ color: MUTED }}>{formatFileSize(file.size)}</p>
+                    </div>
                     <button type="button" onClick={() => setFile(null)} className="shrink-0 transition-colors hover:text-red-600" style={{ color: MUTED }}>
                       <X className="w-4 h-4" />
                     </button>
@@ -394,7 +490,7 @@ export default function ApplyPage() {
                       Drag &amp; drop your resume, or{" "}
                       <span className="font-semibold hover:underline" style={{ color: CYAN }}>browse files</span>
                     </p>
-                    <p className="text-xs mt-1" style={{ color: MUTED }}>PDF or DOCX &middot; Max 10 MB</p>
+                    <p className="text-xs mt-1" style={{ color: MUTED }}>PDF or DOCX &middot; Max {MAX_FILE_SIZE_MB} MB</p>
                   </div>
                 )}
               </Field>

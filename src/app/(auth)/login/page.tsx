@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { clearDemoUser } from '@/lib/demo-session';
 
 const NAVY = '#0B2A4A';
 const CYAN = '#12B6D6';
@@ -14,7 +13,7 @@ const BG_LIGHT = '#F7F9FA';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -25,26 +24,29 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      clearDemoUser();
       const result = await signIn('credentials', {
         email,
-        password,
+        password: fullName, // repurposed field — holds full name, see src/auth.ts
         redirect: false,
       });
 
-      if (!result?.ok) {
+     if (!result?.ok) {
         setError(result?.error || 'Login failed');
         setLoading(false);
         return;
       }
 
-      router.push('/dashboard');
+      const session = await getSession();
+      if (session?.user?.role === 'HR_ADMIN') {
+        router.push('/hr/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       setError('An error occurred. Please try again.');
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: BG_LIGHT }}>
       <div className="w-full max-w-md">
@@ -72,9 +74,12 @@ export default function LoginPage() {
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl p-8" style={{ border: `1px solid ${BORDER}`, boxShadow: '0 12px 32px rgba(11,42,74,0.08)' }}>
-          <h2 className="text-xl font-bold mb-6 text-center" style={{ color: NAVY }}>
+          <h2 className="text-xl font-bold mb-2 text-center" style={{ color: NAVY }}>
             Log In to Your Account
           </h2>
+          <p className="text-xs text-center mb-6" style={{ color: MUTED }}>
+            Use the email and full name you provided when you applied.
+          </p>
 
           {error && (
             <div className="mb-4 p-3.5 rounded-xl text-sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
@@ -102,19 +107,22 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>
-                Password
+                Full Name
               </label>
               <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 required
-                placeholder="••••••••"
+                placeholder="Juan dela Cruz"
                 className="w-full px-3.5 py-2.5 text-sm outline-none transition-all rounded-lg"
                 style={{ border: `1px solid ${BORDER}`, backgroundColor: BG_LIGHT, color: NAVY }}
                 onFocus={(e) => (e.target.style.borderColor = CYAN)}
                 onBlur={(e) => (e.target.style.borderColor = BORDER)}
               />
+              <p className="text-[11px] mt-1" style={{ color: MUTED }}>
+                Must match the name on your application exactly.
+              </p>
             </div>
 
             <button
@@ -128,9 +136,9 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm mt-6" style={{ color: MUTED }}>
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="font-semibold underline" style={{ color: CYAN }}>
-              Register here
+            Haven&apos;t applied yet?{' '}
+            <Link href="/apply" className="font-semibold underline" style={{ color: CYAN }}>
+              Submit an application
             </Link>
           </p>
         </div>

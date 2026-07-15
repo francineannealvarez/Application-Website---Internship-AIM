@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { readDemoApplication } from '@/lib/demo-session';
 import {
   ChevronDown, Check, Clock, AlertCircle, User, Users, GraduationCap,
   Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info, Upload
@@ -19,7 +18,7 @@ const T = {
   cyanBg: '#EEF9FB',
   cyanBorder: '#B8EAF3',
   locked: '#D1DAE3'
-  
+
 };
 
 function cn(...classes: (string | undefined | false | null)[]) {
@@ -325,8 +324,10 @@ const emptyRef: RefRow = { name: '', occupation: '', telephone: '', address: '' 
 /* ─────────────────────────────────────────────────────────────────────────
    Main component
    ───────────────────────────────────────────────────────────────────────── */
-export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
+export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicationId, positionTitle, applicationDate }: { isCurrent: boolean; onSubmit: () => void; applicationId: number | string | null; positionTitle?: string; applicationDate?: string | Date | null; }) {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>('basic');
 
   // ── Basic / contact (deduped: Date + Position + Salary Desired asked once) ──
@@ -506,12 +507,12 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   };
 
   useEffect(() => {
-    const app = readDemoApplication();
-    if (app) {
-      if (app.positionTitle) setPositionApplied(app.positionTitle);
-      if (app.submittedAt) setDateApplied(app.submittedAt.slice(0, 10));
+    if (positionTitle) setPositionApplied(positionTitle);
+    if (applicationDate) {
+      const iso = typeof applicationDate === 'string' ? applicationDate : new Date(applicationDate).toISOString();
+      setDateApplied(iso.slice(0, 10));
     }
-  }, []);
+  }, [positionTitle, applicationDate]);
 
   const f = (v: string) => v.trim().length > 0;
   const eduAllNA = naEduLevels.length === 5;
@@ -651,10 +652,113 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
   const canSubmit = missing.length === 0;
   const missingSections = Array.from(new Set(missing.map((m) => m.section)));
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    setSubmitted(true);
-    onSubmit();
+  const handleSubmit = async () => {
+    if (!canSubmit || !applicationId) return;
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const combineAddress = (region: string, province: string, city: string, barangay: string, street: string) =>
+      [street, barangay, city, province, region].filter(Boolean).join(', ');
+
+    const payload = {
+      application_id: applicationId,
+      last_name: lastName,
+      first_name: firstName,
+      middle_name: middleName,
+      nickname: nickname,
+      present_address: combineAddress(presentRegion, presentProvince, presentCity, presentBarangay, presentStreet),
+      provincial_address: combineAddress(provRegion, provProvince, provCity, provBarangay, provStreet),
+      how_often_visit_province: howOftenVisit,
+      travel_time_minutes: travelTime,
+      residence_number: contactResidence,
+      cellphone: contactCellphone,
+      email: contactEmail,
+      religion: religion === 'Others' ? religionOther : religion,
+      desired_salary: desiredSalary,
+      date_of_birth: dob || null,
+      place_of_birth: pob,
+      nationality: nationality,
+      sex: sex,
+      age: age,
+      height: height,
+      weight: weight,
+      civil_status: civilStatus,
+      sss_number: sss,
+      tin: tin,
+      pagibig_number: pagibig,
+      philhealth_number: philhealth,
+      health_issues: healthIssues,
+      father_name: father.name, father_address: father.address, father_occupation: father.occupation, father_age: father.age, father_na: naFather,
+      mother_name: mother.name, mother_address: mother.address, mother_occupation: mother.occupation, mother_age: mother.age, mother_na: naMother,
+      spouse_name: spouse.name, spouse_address: spouse.address, spouse_occupation: spouse.occupation, spouse_age: spouse.age, spouse_na: naSpouse,
+      siblings: naSiblings ? [] : siblings,
+      siblings_na: naSiblings,
+      children: children,
+      has_relative_in_company: hasRelativesInCompany || null,
+      relatives: hasRelativesInCompany === 'yes' ? relatives : [],
+      elementary: naEduLevels.includes('Elementary') ? null : eduElementary,
+      secondary: naEduLevels.includes('Secondary') ? null : eduSecondary,
+      college: naEduLevels.includes('College') ? null : eduCollege,
+      post_graduate: naEduLevels.includes('Post-Graduate') ? null : eduPostGrad,
+      vocational: naEduLevels.includes('Vocational') ? null : eduVocational,
+      why_took_course: showWhyTookCourse ? whyTookCourse : null,
+      licenses: naLicenses ? [] : licenses,
+      licenses_na: naLicenses,
+      gov_exams: naGovExams ? [] : govExams,
+      gov_exams_na: naGovExams,
+      trainings: naTrainings ? [] : trainings,
+      trainings_na: naTrainings,
+      activities: naActivities ? [] : activities,
+      activities_na: naActivities,
+      special_skills: specialSkills,
+      employment_record: naWorkExperience ? [] : jobs,
+      character_references: naCharRefs ? [] : charRefs,
+      character_references_na: naCharRefs,
+      emergency_name: emergencyName,
+      emergency_relationship: emergencyRelationship,
+      emergency_telephone: emergencyTelephone,
+      emergency_address: emergencyAddress,
+      declarations: {
+        outstandingLoans, outstandingLoansDetail,
+        convicted, convictedDetail,
+        surgery, surgeryDetail,
+        terminated, terminatedDetail,
+        pendingApps, pendingAppsDetail,
+        caseFiled, caseFiledDetail,
+        doYouSmoke, howSoonStart,
+      },
+      personality_profiling: {
+        resignTriggers, stayFactors, handleStress, copeWithCriticism, hobbiesInterests,
+        strengths, improvements, coreValues, futurePlans, parentalSupport,
+        familyMedicalCondition, familyIssues, selfDescription,
+      },
+      work_preferences: {
+        willingMonToSat, willingShifting, willingAnywhere, ifNotWhy,
+        areaOfAssignment, willingTraining, freeLodging,
+      },
+      certify_truth_correctness: certify,
+      signature_name: eSignature,
+    };
+
+    try {
+      const res = await fetch('/api/pds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to submit PDS');
+      }
+
+      setSubmitted(true);
+      onSubmit();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -1168,12 +1272,18 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
         </div>
       )}
 
-      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+      {submitError && (
+        <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', color: '#9F1239' }}>
+          {submitError}
+        </div>
+      )}
+
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit || submitting}
         className="w-full py-3 font-semibold rounded-lg transition-all duration-200 text-sm shadow-sm"
         style={canSubmit
-          ? { backgroundColor: T.navy, color: '#fff', cursor: 'pointer' }
+          ? { backgroundColor: T.navy, color: '#fff', cursor: submitting ? 'wait' : 'pointer' }
           : { backgroundColor: T.locked, color: T.gray, cursor: 'not-allowed' }}>
-        {canSubmit ? 'Submit Personal Data Sheet' : `Complete all fields to submit (${missing.length} remaining)`}
+        {submitting ? 'Submitting...' : canSubmit ? 'Submit Personal Data Sheet' : `Complete all fields to submit (${missing.length} remaining)`}
       </button>
 
       {isCurrent && (
@@ -1185,7 +1295,3 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit }: { isCu
     </div>
   );
 }
-
-
-
-

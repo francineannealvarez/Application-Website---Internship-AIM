@@ -134,6 +134,11 @@ export async function GET(request: NextRequest) {
     const application = await db.applications.findFirst({
       where: { email: email.toLowerCase() },
       orderBy: { date_applied: "desc" },
+      include: {
+        job_postings: {
+          select: { title: true, department: true, employment_type: true },
+        },
+      },
     });
 
     return NextResponse.json(application);

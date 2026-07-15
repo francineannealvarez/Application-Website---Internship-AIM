@@ -20,6 +20,7 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export async function setDemoFiles(resume: File | null, coverLetter: File | null) {
   if (typeof window === 'undefined') return;
+  console.log(resume,coverLetter)
   try {
     if (resume) {
       const dataUrl = await fileToDataUrl(resume);

@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FileText, Shield, CreditCard, ClipboardCheck, Calendar, MapPin, Upload, AlertCircle, Building2, User, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { readDemoUser, type DemoUser } from '@/lib/demo-session';
 
 function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
@@ -120,20 +119,14 @@ export default function RequirementsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [demoUser] = useState<DemoUser | null>(() => (typeof window !== 'undefined' ? readDemoUser() : null));
 
   useEffect(() => {
-    if (status === 'unauthenticated' && !demoUser) router.push('/login');
-  }, [status, demoUser, router]);
+    if (status === 'unauthenticated') router.push('/login');
+  }, [status, router]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        if (demoUser?.id) {
-          setDocuments([]);
-          return;
-        }
-
         const documentsRes = await fetch('/api/documents');
         if (documentsRes.ok) setDocuments(await documentsRes.json());
       } catch (error) {
@@ -142,15 +135,15 @@ export default function RequirementsPage() {
         setLoading(false);
       }
     };
-    if (session || demoUser) load();
-  }, [session, demoUser, status]);
+    if (session) load();
+  }, [session]);
 
   if (status === 'loading' || loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
-  if (!session && !demoUser) return null;
+  if (!session) return null;
 
   const requirementItems = getRequirementItems();
   const submittedCount = requirementItems.filter(item => getDocumentStatus(documents, item.title) === 'SUBMITTED').length;
-  const firstName = session?.user?.name?.split(' ')[0] || demoUser?.name?.split(' ')[0] || 'Applicant';
+  const firstName = session?.user?.name?.split(' ')[0] || 'Applicant';
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8f1fc_0%,_#f0f5fb_55%)]">

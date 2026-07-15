@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Check, Clock, Upload, X, ShieldCheck } from 'lucide-react';
-import { readDemoApplication } from '@/lib/demo-session';
 
 const T = {
   navy: '#0B2A4A',
   cyan: '#12B6D6',
   gray: '#6B7A8D',
-  
+
   bg: '#F7F9FA',
   faint: '#9BAAB8',
   cyanBg: '#EEF9FB',
@@ -19,22 +18,12 @@ const T = {
 const selectCls = 'px-3 py-2.5 text-sm rounded-lg border outline-none transition-colors focus:border-[#12B6D6]';
 const selectStyle: React.CSSProperties = { backgroundColor: '#F7F9FA',  color: '#0B2A4A' };
 
-export default function BackgroundCheckContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
+export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, positionTitle }: { isCurrent: boolean; onSubmit: () => void; fullName?: string; positionTitle?: string }) {
   const [submitted, setSubmitted] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [position, setPosition] = useState('');
   const [dateSigned, setDateSigned] = useState('');
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const app = readDemoApplication();
-    if (app) {
-      if (app.fullName) setFullName(app.fullName);
-      if (app.positionTitle) setPosition(app.positionTitle);
-    }
-  }, []);
 
   const handleFile = (file: File) => {
     setSignatureFile(file);
@@ -79,7 +68,7 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit }: { isCurr
         <p>
           This is to authorize Arvin International Marketing Inc. to conduct a reference check with my present and/or previous employer(s) and
           character references relative to my application in{' '}
-          <span className="font-bold underline">{position || '_________________________'}</span> position under Arvin International Marketing Inc.
+          <span className="font-bold underline">{positionTitle || '_________________________'}</span> position under Arvin International Marketing Inc.
         </p>
         <p>
           I understand that information may include, but is not limited to, my employment performance, professional demeanor, and rehire

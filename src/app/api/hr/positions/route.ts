@@ -9,9 +9,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const positions = await db.position.findMany({
-      orderBy: { createdAt: "desc" },
+    const jobPostings = await db.job_postings.findMany({
+      orderBy: { created_at: "desc" },
     });
+
+    const positions = jobPostings.map((job) => ({
+      id: job.id,
+      title: job.title,
+      department: job.department ?? "",
+      employmentType: job.employment_type ?? "",
+      description: job.description,
+      isActive: !job.archived,
+    }));
 
     return NextResponse.json(positions);
   } catch (error) {
@@ -40,14 +49,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const position = await db.position.create({
+    const job = await db.job_postings.create({
       data: {
         title,
         department,
-        employmentType,
+        employment_type: employmentType,
         description,
       },
     });
+
+    const position = {
+      id: job.id,
+      title: job.title,
+      department: job.department ?? "",
+      employmentType: job.employment_type ?? "",
+      description: job.description,
+      isActive: !job.archived,
+    };
 
     return NextResponse.json(position, { status: 201 });
   } catch (error) {

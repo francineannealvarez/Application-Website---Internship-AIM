@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
- 
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,24 +11,33 @@ export async function PATCH(
     if (!session?.user?.id || session.user.role !== "HR_ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
- 
+
     // Next.js 15+ makes `params` a Promise — must await it before use
     const { id } = await params;
- 
     const body = await request.json();
     const { title, department, employmentType, description, isActive } = body;
- 
-    const position = await db.position.update({
+
+    const job = await db.job_postings.update({
       where: { id },
       data: {
         ...(title && { title }),
         ...(department && { department }),
-        ...(employmentType && { employmentType }),
+        ...(employmentType && { employment_type: employmentType }),
         ...(description && { description }),
-        ...(isActive !== undefined && { isActive }),
+        // isActive (UI concept) is the inverse of archived (DB concept)
+        ...(isActive !== undefined && { archived: !isActive }),
       },
     });
- 
+
+    const position = {
+      id: job.id,
+      title: job.title,
+      department: job.department ?? "",
+      employmentType: job.employment_type ?? "",
+      description: job.description,
+      isActive: !job.archived,
+    };
+
     return NextResponse.json(position);
   } catch (error) {
     console.error("Update position error:", error);
@@ -38,7 +47,7 @@ export async function PATCH(
     );
   }
 }
- 
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -48,16 +57,25 @@ export async function DELETE(
     if (!session?.user?.id || session.user.role !== "HR_ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
- 
+
     // Next.js 15+ makes `params` a Promise — must await it before use
     const { id } = await params;
- 
-    // Set to inactive instead of deleting
-    const position = await db.position.update({
+
+    // Archive instead of hard-deleting
+    const job = await db.job_postings.update({
       where: { id },
-      data: { isActive: false },
+      data: { archived: true },
     });
- 
+
+    const position = {
+      id: job.id,
+      title: job.title,
+      department: job.department ?? "",
+      employmentType: job.employment_type ?? "",
+      description: job.description,
+      isActive: !job.archived,
+    };
+
     return NextResponse.json(position);
   } catch (error) {
     console.error("Delete position error:", error);

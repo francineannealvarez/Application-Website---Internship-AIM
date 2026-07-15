@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAllApplications, mockPositions } from '@/lib/mockData';
-import { clearDemoUser, readDemoUser, type DemoUser } from '@/lib/demo-session';
 
 type HRApplication = {
   id: string;
@@ -18,7 +16,7 @@ type HRApplication = {
   phone?: string | null;
 };
 
-function getApplicationsFromApi(sessionTokenReady: boolean) {
+function getApplicationsFromApi() {
   return fetch('/api/hr/applicants').then(async (res) => {
     if (!res.ok) throw new Error('Failed to load HR applicants');
     return (await res.json()) as HRApplication[];
@@ -26,47 +24,43 @@ function getApplicationsFromApi(sessionTokenReady: boolean) {
 }
 
 function getPositionTitle(app: HRApplication) {
-  return app.position?.title || mockPositions.find((p) => p.id === (app as { positionId?: string }).positionId)?.title || 'N/A';
+  return app.position?.title || 'N/A';
 }
 
 export default function HRDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [demoUser] = useState<DemoUser | null>(() => (typeof window !== 'undefined' ? readDemoUser() : null));
   const [applications, setApplications] = useState<HRApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const isRealHrSession = Boolean(session?.user?.id && session.user.role === 'HR_ADMIN');
-  const isDemoHrSession = Boolean(demoUser?.role === 'HR_ADMIN' && !isRealHrSession);
+  const isHrSession = Boolean(session?.user?.id && session.user.role === 'HR_ADMIN');
 
   useEffect(() => {
-    if (status === 'unauthenticated' && !demoUser) {
+    if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [status, demoUser, router]);
+  }, [status, router]);
 
   useEffect(() => {
     let active = true;
 
     const load = async () => {
       try {
-        if (isRealHrSession) {
-          const data = await getApplicationsFromApi(true);
-          if (active) setApplications(data);
-        } else if (isDemoHrSession) {
-          if (active) setApplications(getAllApplications() as HRApplication[]);
+        const data = await getApplicationsFromApi();
+        if (active) {
+          setApplications(data);
+          setLoadError(null);
         }
       } catch (error) {
         console.error('Error loading HR dashboard data:', error);
-        if (isDemoHrSession) {
-          if (active) setApplications(getAllApplications() as HRApplication[]);
-        }
+        if (active) setLoadError('Failed to load applicants. Please try again.');
       } finally {
         if (active) setLoading(false);
       }
     };
 
-    if (isRealHrSession || isDemoHrSession) {
+    if (isHrSession) {
       void load();
     } else if (status !== 'loading') {
       setLoading(false);
@@ -75,7 +69,7 @@ export default function HRDashboard() {
     return () => {
       active = false;
     };
-  }, [isRealHrSession, isDemoHrSession, status]);
+  }, [isHrSession, status]);
 
   const stats = useMemo(() => {
     return {
@@ -99,10 +93,9 @@ export default function HRDashboard() {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
-  const displayName = session?.user?.name || demoUser?.name || 'HR Admin';
+  const displayName = session?.user?.name || 'HR Admin';
 
   const handleLogout = () => {
-    clearDemoUser();
     void signOut({ callbackUrl: '/' });
   };
 
@@ -148,7 +141,7 @@ export default function HRDashboard() {
           <div className="max-w-6xl">
             <h1 className="text-3xl font-bold text-[#1B3A5C] mb-2">HR Dashboard</h1>
             <p className="text-sm text-gray-600 mb-8">
-              {isRealHrSession ? 'Live applicant data from the database.' : 'Demo data is active. Log in with the seeded HR account to see live submissions.'}
+              {loadError ? loadError : 'Live applicant data from the database.'}
             </p>
 
             <div className="grid md:grid-cols-4 gap-6 mb-8">
