@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 export async function GET(request: NextRequest) {
   try {
     const jobPostings = await db.job_postings.findMany({
-      where: { archived: false },
+      where: { archived: false, status: "Open" },
       orderBy: { date_posted: "desc" },
     });
 

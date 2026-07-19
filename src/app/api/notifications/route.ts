@@ -9,12 +9,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const notifications = await db.notification.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
+    const notifications = await db.notifications.findMany({
+      where: { user_id: session.user.id },
+      orderBy: { created_at: "desc" },
     });
 
-    return NextResponse.json(notifications);
+    // Map snake_case DB fields to the camelCase shape the frontend expects
+    const mapped = notifications.map((n) => ({
+      id: n.id,
+      message: n.message,
+      isRead: n.is_read,
+      createdAt: n.created_at,
+    }));
+
+    return NextResponse.json(mapped);
   } catch (error) {
     console.error("Get notifications error:", error);
     return NextResponse.json(
@@ -32,9 +40,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark all as read
-    await db.notification.updateMany({
-      where: { userId: session.user.id },
-      data: { isRead: true },
+    await db.notifications.updateMany({
+      where: { user_id: session.user.id },
+      data: { is_read: true },
     });
 
     return NextResponse.json({ message: "All notifications marked as read" });

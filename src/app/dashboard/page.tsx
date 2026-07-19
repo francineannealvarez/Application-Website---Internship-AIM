@@ -19,13 +19,20 @@ import OnboardingContent from '@/components/dashboard/OnboardingContent';
 import SRAContent from '@/components/dashboard/SRAContent';
 import JobOfferContent from '@/components/dashboard/JobOfferContent';
 import StepGate from '@/components/dashboard/StepGate';
-import { readStepSchedule, type StepSchedule } from '@/lib/schedule-store';
 
 function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
 type DocStatus = 'Submitted' | 'Pending';
+
+type InterviewSchedule = {
+  date?: string;
+  time?: string;
+  method?: string;
+  note?: string;
+  venue?: string;
+} | null;
 
 type RealApplicationRecord = {
   id: string;
@@ -34,29 +41,108 @@ type RealApplicationRecord = {
   full_name?: string;
   email?: string;
   date_applied?: string | Date;
+  date_hired?: string | Date | null;
   job_postings?: { title?: string; department?: string; employment_type?: string } | null;
+  initial_interview_schedule?: InterviewSchedule;
+  final_interview_schedule?: InterviewSchedule;
+  interview_status?: string | null;
+  employment_verification_status?: string | null;
 };
+
+/**
+ * `interview_status` DB values: NULL, 'Passed', 'Failed', 'Discontinued'.
+ * Note: this column has no "in review" value - while it's NULL, the
+ * applicant is just waiting on HR with no verdict yet.
+ */
+function normalizeInterviewStatus(raw?: string | null): 'passed' | 'failed' | 'discontinued' | null {
+  if (raw === 'Passed') return 'passed';
+  if (raw === 'Failed') return 'failed';
+  if (raw === 'Discontinued') return 'discontinued';
+  return null;
+}
+
+/**
+ * `employment_verification_status` DB values: NULL, 'On Progress', 'Passed', 'Failed'.
+ */
+function normalizeEvStatus(raw?: string | null): 'reviewing' | 'passed' | 'failed' | null {
+  if (raw === 'On Progress') return 'reviewing';
+  if (raw === 'Passed') return 'passed';
+  if (raw === 'Failed') return 'failed';
+  return null;
+}
+
+/**
+ * `Final Interview` has no dedicated status column - HR simply advances
+ * the overall `stage` once it's done. We derive a StepGate-compatible
+ * status by comparing where `stage` currently sits against this
+ * checkpoint in the DB's enforced stage order, folding in `status`
+ * (failed/withdrawn) for a verdict while the applicant is parked here.
+ */
+const DB_STAGE_ORDER = [
+  'Applied',
+  'Prescreen',
+  'Shortlisted',
+  'Initial Interview',
+  'Assessment',
+  'Final Interview',
+  'Employment Verification',
+  'Job Offer',
+  'On Boarding',
+];
+
+function normalizeFinalInterviewStatus(
+  stage: string,
+  appStatus: string
+): 'passed' | 'failed' | 'discontinued' | null {
+  const checkpointIdx = DB_STAGE_ORDER.indexOf('Final Interview');
+  const currentIdx = DB_STAGE_ORDER.indexOf(stage);
+  if (currentIdx === -1) return null;
+  if (currentIdx > checkpointIdx) return 'passed';
+  if (currentIdx === checkpointIdx) {
+    if (appStatus === 'failed') return 'failed';
+    if (appStatus === 'withdrawn') return 'discontinued';
+  }
+  return null;
+}
 
 const STAGE_LABELS = ['Submitted', 'Under Review', 'Result'];
 const STAGE_ICONS = [FileText, Clock, Sparkles] as const;
 
-function statusToStage(status: string): number {
-  const s = (status || '').toLowerCase();
-  switch (s) {
-    case 'active':
-    case 'submitted':
-      return 0;
-    case 'under_review':
-    case 'reviewing':
-      return 1;
-    case 'shortlisted':
-    case 'passed':
-      return 2;
-    case 'hired':
-    case 'rejected':
-      return 3;
+/**
+ * Maps the real DB columns (`status`, `stage`) to the 3-step Application
+ * Status card (Submitted / Under Review / Result).
+ *
+ * DB `stage` values (enforced by a check constraint):
+ *   Applied, Prescreen, Shortlisted, Initial Interview, Assessment,
+ *   Final Interview, Employment Verification, Job Offer, On Boarding
+ *
+ * DB `status` values (enforced by a check constraint):
+ *   active, failed, withdrawn
+ *
+ * - Applied                -> Submitted (0)
+ * - Prescreen               -> Under Review (1)
+ * - Shortlisted              -> Under Review (2)
+ * - anything past Shortlisted -> Result (3)
+ * - status is failed/withdrawn -> Result (3), flagged as rejected
+ */
+function computeApplicationProgress(
+  status: string,
+  stage: string
+): { stage: number; rejected: boolean } {
+  const rejected = status === 'failed' || status === 'withdrawn';
+  if (rejected) return { stage: 3, rejected: true };
+
+  switch (stage) {
+    case 'Applied':
+      return { stage: 0, rejected: false };
+    case 'Prescreen':
+      return { stage: 1, rejected: false };
+    case 'Shortlisted':
+      return { stage: 2, rejected: false };
     default:
-      return 0;
+      // Initial Interview, Assessment, Final Interview,
+      // Employment Verification, Job Offer, On Boarding
+      return { stage: 3, rejected: false };
   }
 }
 
@@ -86,19 +172,48 @@ const STATUS_BANNER_STYLE: Record<number, React.CSSProperties> = {
   3: {}
 };
 
-function ApplicationStatusCard({ stage, onContinue }: { stage: number; onContinue: () => void; }) {
-  const bannerConfig = STATUS_BANNER[stage] ?? { cls: '', icon: null, text: '' };
-  const bannerStyle = STATUS_BANNER_STYLE[stage] ?? {};
-  const bannerExtraCls = stage === 2 ? 'bg-amber-50 border border-amber-200' : stage === 3 ? 'bg-green-50 border border-green-200' : '';
+const REJECTED_BANNER = {
+  cls: 'text-red-900',
+  icon: <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />,
+  text: 'Unfortunately, your application did not move forward this time. Thank you for your interest in Arvin International.',
+};
+
+const REJECTED_BANNER_STYLE: React.CSSProperties = { backgroundColor: '#FEF2F2' };
+
+function ApplicationStatusCard({
+  stage,
+  rejected,
+  onContinue,
+}: {
+  stage: number;
+  rejected: boolean;
+  onContinue: () => void;
+}) {
+  const bannerConfig = rejected ? REJECTED_BANNER : (STATUS_BANNER[stage] ?? { cls: '', icon: null, text: '' });
+  const bannerStyle = rejected ? REJECTED_BANNER_STYLE : (STATUS_BANNER_STYLE[stage] ?? {});
+  const bannerExtraCls = rejected
+    ? 'bg-red-50 border border-red-200'
+    : stage === 2
+    ? 'bg-amber-50 border border-amber-200'
+    : stage === 3
+    ? 'bg-green-50 border border-green-200'
+    : '';
+
   return (
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-[#E5E9EC] overflow-hidden transition-shadow duration-300 animate-fade-slide-up delay-2">
       <div className="px-6 py-4 border-b border-[#E5E9EC] flex items-center justify-between gap-2 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-[#0B2A4A]">Application Status</h3>
-            <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-              <Check className="w-3 h-3" /> Submitted
-            </span>
+            {rejected ? (
+              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                Not Selected
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                <Check className="w-3 h-3" /> Submitted
+              </span>
+            )}
           </div>
           <p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Track your application progress</p>
         </div>
@@ -135,7 +250,7 @@ function ApplicationStatusCard({ stage, onContinue }: { stage: number; onContinu
         <div className={cn('flex items-start gap-3 rounded-xl p-4 text-sm transition-all duration-300 animate-fade-in', bannerConfig.cls, bannerExtraCls)} style={bannerStyle}>
           {bannerConfig.icon}<span>{bannerConfig.text}</span>
         </div>
-        {stage === 3 && (
+        {stage === 3 && !rejected && (
           <div className="mt-4 animate-fade-slide-up">
             <button onClick={onContinue} className="w-full py-3 text-white font-semibold rounded-lg hover:opacity-90 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 text-sm shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>
               Continue to Hiring Process
@@ -168,35 +283,68 @@ function buildHiringSteps(includeSri: boolean): { key: StepKey; label: string; s
   return steps;
 }
 
+/**
+ * Maps the real DB `stage` column to a position in the 9-step Hiring
+ * Process card. `stage` only tracks these HR-driven checkpoints:
+ *   Initial Interview, Assessment, Final Interview,
+ *   Employment Verification, Job Offer, On Boarding
+ *
+ * The applicant-submitted steps in between (Personal Data Sheet, SRA,
+ * Requirements) don't have their own `stage` value - once the DB stage
+ * moves past them, they're treated as done. If `date_hired` is set, the
+ * whole process is complete (past Onboarding).
+ */
+const STAGE_TO_STEP_KEY: Partial<Record<string, StepKey>> = {
+  'Initial Interview': 'initial',
+  'Assessment': 'assessment',
+  'Final Interview': 'department',
+  'Employment Verification': 'background',
+  'Job Offer': 'joboffer',
+  'On Boarding': 'onboarding',
+};
+
+function computeHiringStepIndex(
+  stage: string,
+  dateHired: string | Date | null | undefined,
+  steps: { key: StepKey }[]
+): number {
+  if (dateHired) return steps.length;
+  const key = STAGE_TO_STEP_KEY[stage];
+  if (!key) return 0;
+  const idx = steps.findIndex((s) => s.key === key);
+  return idx === -1 ? 0 : idx;
+}
+
 const STEP_DETAILS = [
   { date: 'July 20, 2026', time: '10:00 AM', venue: null, platform: null, instructions: 'Please wait for a message from HR regarding your Initial Interview schedule. Depending on your assigned interviewer, this may be conducted via Microsoft Teams, face-to-face, or a Viber call - make sure your Viber, email, and phone are all reachable so HR can reach you through whichever mode is assigned.' },
   { date: 'July 29, 2025', time: '2:00 PM', venue: 'Arvin International Marketing Inc. - 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City', platform: null, instructions: 'This is a technical interview with your prospective department head. Review your application thoroughly and be prepared to discuss your relevant experience in detail.' },
 ];
 
 const REQUIREMENTS_MAIN = [
-  { label: 'Medical Certificate', note: 'From an accredited government physician', Icon: ClipboardCheck },
-  { label: 'SSS ID / E-1 Form', note: 'Photocopy of SSS ID or E-1 form', Icon: Hash },
-  { label: 'PhilHealth ID / MDR', note: 'Photocopy of PhilHealth ID or MDR', Icon: Shield },
-  { label: 'Pag-IBIG ID / MDF', note: 'Photocopy of Pag-IBIG ID or Members Data Form', Icon: CreditCard },
-  { label: 'TIN No.', note: 'Photocopy of BIR Form 1902 or TIN card', Icon: FileText },
-  { label: 'Birth Certificate', note: 'PSA-issued copy', Icon: FileText },
-  { label: "Marriage Certificate", note: 'If applicable - PSA-issued copy', Icon: FileText },
-  { label: "Children's Birth Certificate(s)", note: 'If applicable - PSA-issued copy', Icon: FileText },
-  { label: 'School Diploma', note: 'Photocopy of diploma', Icon: FileText },
-  { label: 'Transcript of Records', note: 'Photocopy from your school registrar', Icon: FileText },
-  { label: "Driver's License", note: 'For driver applicants only', Icon: CreditCard },
-  { label: 'Training & Seminar Certificates', note: 'If applicable', Icon: ClipboardCheck },
-  { label: 'NBI Clearance', note: 'Original copy, issued within the last 3 months', Icon: Shield },
-  { label: 'Police Clearance', note: 'Original copy', Icon: Shield },
-  { label: 'Barangay Clearance', note: 'Original copy', Icon: Shield },
-  { label: 'ID Pictures (1x1 & 2x2)', note: 'White background', Icon: CreditCard },
+  { key: 'medical_certificate', label: 'Medical Certificate', note: 'From an accredited government physician', Icon: ClipboardCheck },
+  { key: 'sss_id', label: 'SSS ID / E-1 Form', note: 'Photocopy of SSS ID or E-1 form', Icon: Hash },
+  { key: 'philhealth_id', label: 'PhilHealth ID / MDR', note: 'Photocopy of PhilHealth ID or MDR', Icon: Shield },
+  { key: 'pagibig_id', label: 'Pag-IBIG ID / MDF', note: 'Photocopy of Pag-IBIG ID or Members Data Form', Icon: CreditCard },
+  { key: 'tin', label: 'TIN No.', note: 'Photocopy of BIR Form 1902 or TIN card', Icon: FileText },
+  { key: 'birth_certificate', label: 'Birth Certificate', note: 'PSA-issued copy', Icon: FileText },
+  { key: 'marriage_certificate', label: "Marriage Certificate", note: 'If applicable - PSA-issued copy', Icon: FileText },
+  { key: 'children_birth_certificates', label: "Children's Birth Certificate(s)", note: 'If applicable - PSA-issued copy', Icon: FileText },
+  { key: 'school_diploma', label: 'School Diploma', note: 'Photocopy of diploma', Icon: FileText },
+  { key: 'transcript_of_records', label: 'Transcript of Records', note: 'Photocopy from your school registrar', Icon: FileText },
+  { key: 'drivers_license', label: "Driver's License", note: 'For driver applicants only', Icon: CreditCard },
+  { key: 'training_certificates', label: 'Training & Seminar Certificates', note: 'If applicable', Icon: ClipboardCheck },
+  { key: 'nbi_clearance', label: 'NBI Clearance', note: 'Original copy, issued within the last 3 months', Icon: Shield },
+  { key: 'police_clearance', label: 'Police Clearance', note: 'Original copy', Icon: Shield },
+  { key: 'barangay_clearance', label: 'Barangay Clearance', note: 'Original copy', Icon: Shield },
+  { key: 'id_pictures', label: 'ID Pictures (1x1 & 2x2)', note: 'White background', Icon: CreditCard },
 ];
 
 const REQUIREMENTS_PREV_EMPLOYER = [
-  { label: 'BIR Form 2316', note: 'From your previous employer', Icon: FileText },
-  { label: 'Certificate of Employment', note: 'From your previous employer', Icon: FileText },
-  { label: 'Latest Pay Slip', note: 'At least 1 month, from your previous employer', Icon: FileText },
+  { key: 'bir_2316', label: 'BIR Form 2316', note: 'From your previous employer', Icon: FileText },
+  { key: 'certificate_of_employment', label: 'Certificate of Employment', note: 'From your previous employer', Icon: FileText },
+  { key: 'latest_pay_slip', label: 'Latest Pay Slip', note: 'At least 1 month, from your previous employer', Icon: FileText },
   {
+    key: 'sss_pagibig_loan_status',
     label: 'SSS / Pag-IBIG Loan Status Form',
     note: 'If with an existing SSS/Pag-IBIG loan: submit an updated Statement of Account (photocopy) with your payment arrangement. If without a loan: submit the printed online status confirming you have no existing loan.',
     Icon: Hash
@@ -204,13 +352,9 @@ const REQUIREMENTS_PREV_EMPLOYER = [
 ];
 
 const REQUIREMENTS_BDO = [
-  { label: '1x1 ID Picture', note: 'White background', Icon: CreditCard },
-  { label: 'Photocopy of 2 Different Government-Issued IDs', note: 'Or an original Police Clearance', Icon: Shield },
+  { key: 'bdo_id_picture', label: '1x1 ID Picture', note: 'White background', Icon: CreditCard },
+  { key: 'bdo_gov_ids', label: 'Photocopy of 2 Different Government-Issued IDs', note: 'Or an original Police Clearance', Icon: Shield },
 ];
-
-const REQUIREMENTS_PREV_EMPLOYER_START = REQUIREMENTS_MAIN.length;
-const REQUIREMENTS_BDO_START = REQUIREMENTS_MAIN.length + REQUIREMENTS_PREV_EMPLOYER.length;
-const REQUIREMENTS_TOTAL = REQUIREMENTS_MAIN.length + REQUIREMENTS_PREV_EMPLOYER.length + REQUIREMENTS_BDO.length;
 
 const GUIDES: { id: string; title: string; steps: string[]; note?: string; link?: { label: string; href: string }; extraList?: { heading: string; items: string[] } }[] = [
   {
@@ -287,42 +431,74 @@ const GUIDES: { id: string; title: string; steps: string[]; note?: string; link?
   },
 ];
 
-function StepDetailContent({ stepIdx, isCurrent }: { stepIdx: number; isCurrent: boolean }) {
+function formatScheduleDate(dateStr?: string): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function formatScheduleTime(timeStr?: string): string | null {
+  if (!timeStr) return null;
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return timeStr;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${period}`;
+}
+
+function StepDetailContent({
+  stepIdx,
+  isCurrent,
+  schedule,
+}: {
+  stepIdx: number;
+  isCurrent: boolean;
+  schedule?: InterviewSchedule;
+}) {
   const detail = STEP_DETAILS[stepIdx];
-  const stepKey = stepIdx === 0 ? 'initial-interview' : 'department-interview';
-  const [schedule] = useState<StepSchedule | null>(() => (typeof window !== 'undefined' ? readStepSchedule(stepKey) : null));
   if (!detail) return null;
-  const displayDate = schedule?.date ?? detail.date;
-  const displayTime = schedule?.time ?? detail.time;
+
+  const displayDate = formatScheduleDate(schedule?.date);
+  const displayTime = formatScheduleTime(schedule?.time);
+  const method = schedule?.method || null;
+  const venue = schedule?.venue || null;
+  const note = schedule?.note || null;
+  const isFaceToFace = method?.toLowerCase().includes('face');
+
   return (
     <div className="space-y-3 pt-3">
       <div className="flex items-center gap-2.5 text-sm text-[#0B2A4A]">
         <Calendar className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
         {displayDate ? (
-          <span><span className="font-semibold">{displayDate}</span><span style={{ color: '#6B7A8D' }}> at {displayTime}</span></span>
+          <span><span className="font-semibold">{displayDate}</span>{displayTime && <span style={{ color: '#6B7A8D' }}> at {displayTime}</span>}</span>
         ) : (
           <span style={{ color: '#6B7A8D' }}>Schedule to be announced by HR</span>
         )}
       </div>
-      {detail.venue ? (
-        <div className="flex items-start gap-2.5 text-sm text-[#0B2A4A]">
-          <MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
-          <span>
-            <span className="inline-block mr-2 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEF9FB', color: '#12B6D6' }}>Face-to-Face</span>
-            {detail.venue}
-          </span>
-        </div>
-      ) : detail.platform ? (
-        <div className="flex items-start gap-2.5 text-sm">
-          <Link2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
-          <span>
-            <span className="inline-block mr-2 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEF9FB', color: '#12B6D6' }}>Online</span>
-            <a href={detail.platform} target="_blank" rel="noreferrer" className="hover:underline" style={{ color: '#12B6D6' }}>{detail.platform}</a>
-          </span>
-        </div>
-      ) : null}
+      {method && (
+        isFaceToFace ? (
+          <div className="flex items-start gap-2.5 text-sm text-[#0B2A4A]">
+            <MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+            <span>
+              <span className="inline-block mr-2 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEF9FB', color: '#12B6D6' }}>{method}</span>
+              {venue || 'Venue to be confirmed by HR'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 text-sm">
+            <Link2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} />
+            <span>
+              <span className="inline-block mr-2 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEF9FB', color: '#12B6D6' }}>{method}</span>
+              {venue || 'HR will reach out via this method'}
+            </span>
+          </div>
+        )
+      )}
       <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-xl p-3.5 text-sm text-amber-800">
-        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /><span>{detail.instructions}</span>
+        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /><span>{note || detail.instructions}</span>
       </div>
       {isCurrent && (
         <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: '#F7F9FA', color: '#6B7A8D' }}>
@@ -411,61 +587,52 @@ function GuideAccordion({ guide }: { guide: (typeof GUIDES)[number] }) {
   );
 }
 
-type StoredReqFile = { name: string; type: string; dataUrl: string };
+type ReqRecord = { status: DocStatus; fileName: string | null; filePath: string | null };
 
-function dataUrlToBlobUrl(dataUrl: string): string {
-  const [header, base64] = dataUrl.split(',');
-  const mimeMatch = header.match(/data:(.*);base64/);
-  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const blob = new Blob([bytes], { type: mime });
-  return URL.createObjectURL(blob);
-}
-
-function RequirementRow({ label, note, Icon, status, file, onUpload }: {
-  label: string; note: string; Icon: React.ElementType; status: DocStatus;
-  file: StoredReqFile | null; onUpload: (file: File) => void;
+function RequirementRow({ label, note, Icon, record, uploading, onUpload }: {
+  label: string; note: string; Icon: React.ElementType; record: ReqRecord | undefined;
+  uploading: boolean; onUpload: (file: File) => void;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const isSubmitted = status === 'Submitted' && file;
+  const isSubmitted = record?.status === 'Submitted' && Boolean(record.fileName);
 
   return (
     <div className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#E5E9EC] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)' }}><Icon className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold text-[#0B2A4A]">{label}</div>
-        <div className="text-xs mt-0.5 truncate" style={{ color: '#6B7A8D' }}>{isSubmitted ? file!.name : note}</div>
+        <div className="text-xs mt-0.5 truncate" style={{ color: '#6B7A8D' }}>{isSubmitted ? record!.fileName : note}</div>
       </div>
       <input ref={inputRef} type="file" accept=".pdf,image/*" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
       {isSubmitted ? (
         <div className="flex items-center gap-1.5 shrink-0">
-          <a href={dataUrlToBlobUrl(file!.dataUrl)} target="_blank" rel="noreferrer"
-            className="text-xs font-semibold px-2.5 py-1 rounded-full hover:underline" style={{ color: '#12B6D6' }}>
-            View
-          </a>
+          {record!.filePath && (
+            <a href={record!.filePath} target="_blank" rel="noreferrer"
+              className="text-xs font-semibold px-2.5 py-1 rounded-full hover:underline" style={{ color: '#12B6D6' }}>
+              View
+            </a>
+          )}
           <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700 shrink-0">
             <Check className="w-3 h-3" /> Submitted
           </span>
-          <button type="button" onClick={() => inputRef.current?.click()}
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
             className="text-xs font-medium px-2 py-1 rounded-full hover:bg-black/5 shrink-0" style={{ color: '#9BAAB8' }}>
             Replace
           </button>
         </div>
       ) : (
-        <button type="button" onClick={() => inputRef.current?.click()}
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
           className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-[#EEF9FB] hover:text-[#12B6D6] transition-colors shrink-0">
-          <Clock className="w-3 h-3" /> Upload
+          <Clock className="w-3 h-3" /> {uploading ? 'Uploading...' : 'Upload'}
         </button>
       )}
     </div>
   );
 }
 
-function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: {
-  docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; isCurrent: boolean;
+function RequirementsContent({ requirementsData, uploadingKey, onDocUpload, isCurrent }: {
+  requirementsData: Record<string, ReqRecord>; uploadingKey: string | null; onDocUpload: (key: string, file: File) => void; isCurrent: boolean;
 }) {
   return (
     <div className="pt-3 space-y-4">
@@ -475,33 +642,27 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
       </div>
 
       <div className="space-y-2">
-        {REQUIREMENTS_MAIN.map(({ label, note, Icon }, idx) => (
-          <RequirementRow key={idx} label={label} note={note} Icon={Icon}
-            status={docStatuses[idx]} file={docFiles[idx]} onUpload={(file) => onDocUpload(idx, file)} />
+        {REQUIREMENTS_MAIN.map((r) => (
+          <RequirementRow key={r.key} label={r.label} note={r.note} Icon={r.Icon}
+            record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)} />
         ))}
       </div>
 
       <ReqCollapsible title="Additional Requirements - If You Previously Worked Elsewhere" subtitle="Only applicable if you have prior employment">
         <div className="space-y-2">
-          {REQUIREMENTS_PREV_EMPLOYER.map((r, idx) => {
-            const globalIdx = REQUIREMENTS_PREV_EMPLOYER_START + idx;
-            return (
-              <RequirementRow key={idx} label={r.label} note={r.note} Icon={r.Icon}
-                status={docStatuses[globalIdx]} file={docFiles[globalIdx]} onUpload={(file) => onDocUpload(globalIdx, file)} />
-            );
-          })}
+          {REQUIREMENTS_PREV_EMPLOYER.map((r) => (
+            <RequirementRow key={r.key} label={r.label} note={r.note} Icon={r.Icon}
+              record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)} />
+          ))}
         </div>
       </ReqCollapsible>
 
       <ReqCollapsible title="Additional Requirements - BDO Payroll Account Application" subtitle="Only applicable when opening a BDO account">
         <div className="space-y-2">
-          {REQUIREMENTS_BDO.map((r, idx) => {
-            const globalIdx = REQUIREMENTS_BDO_START + idx;
-            return (
-              <RequirementRow key={idx} label={r.label} note={r.note} Icon={r.Icon}
-                status={docStatuses[globalIdx]} file={docFiles[globalIdx]} onUpload={(file) => onDocUpload(globalIdx, file)} />
-            );
-          })}
+          {REQUIREMENTS_BDO.map((r) => (
+            <RequirementRow key={r.key} label={r.label} note={r.note} Icon={r.Icon}
+              record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)} />
+          ))}
         </div>
       </ReqCollapsible>
 
@@ -527,7 +688,7 @@ function RequirementsContent({ docStatuses, docFiles, onDocUpload, isCurrent }: 
   );
 }
 
-function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDocUpload, onSimulateHrComplete, applicantName, onWithdraw, applicationId, positionTitle, dateApplied }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; docStatuses: DocStatus[]; docFiles: (StoredReqFile | null)[]; onDocUpload: (idx: number, file: File) => void; onSimulateHrComplete: () => void;  applicantName: string; onWithdraw: (reason: string) => void; applicationId: string | null; positionTitle: string; dateApplied?: string | Date | null; }) {
+function HiringProcessCard({ steps, completedSteps, requirementsData, uploadingKey, onDocUpload, onStepSubmitted, onAdvance, applicantName, onWithdraw, applicationId, positionTitle, dateApplied, initialInterviewSchedule, finalInterviewSchedule, initialInterviewStatus, backgroundCheckStatus, finalInterviewStatus }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; requirementsData: Record<string, ReqRecord>; uploadingKey: string | null; onDocUpload: (key: string, file: File) => void; onStepSubmitted: () => void; onAdvance: () => void; applicantName: string; onWithdraw: (reason: string) => void; applicationId: string | null; positionTitle: string; dateApplied?: string | Date | null; initialInterviewSchedule?: InterviewSchedule; finalInterviewSchedule?: InterviewSchedule; initialInterviewStatus?: ReturnType<typeof normalizeInterviewStatus>; backgroundCheckStatus?: ReturnType<typeof normalizeEvStatus>; finalInterviewStatus?: ReturnType<typeof normalizeFinalInterviewStatus>; }) {
   const totalSteps = steps.length;
   const circleState = (idx: number): 'completed' | 'active' | 'locked' => { if (idx < completedSteps) return 'completed'; if (idx === completedSteps) return 'active'; return 'locked'; };
   return (
@@ -536,7 +697,6 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
       <div className="px-6 py-4 border-b border-[#E5E9EC] flex items-center justify-between gap-2 flex-wrap">
         <div><h3 className="font-bold text-[#0B2A4A] tracking-widest text-sm">HIRING PROCESS</h3><p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Click on each stage to view details</p></div>
         <div className="flex items-center gap-2 shrink-0">
-          {completedSteps < totalSteps && <button onClick={onSimulateHrComplete} className="text-xs px-3 py-1.5 rounded-lg border border-dashed text-[#9BAAB8] hover:bg-[#F7F9FA] active:scale-95 transition-all font-medium">Simulate HR Update &rarr;</button>}
           <span className="text-xs font-bold px-3 py-1 text-white rounded-full shadow-sm" style={{ backgroundColor: '#0B2A4A' }}>Active</span>
         </div>
       </div>
@@ -581,30 +741,30 @@ function HiringProcessCard({ steps, completedSteps, docStatuses, docFiles, onDoc
               </div>
               <div className="px-4 pb-4 border-t border-[#E5E9EC]/80 animate-fade-slide-up">
                 {step.key === 'initial' ? (
-                  <StepGate stepLabel="Initial Interview" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <StepDetailContent stepIdx={0} isCurrent={isCurrent} />}
+                  <StepGate stepLabel="Initial Interview" isCurrent={isCurrent} status={initialInterviewStatus} onSubmitted={onStepSubmitted} onContinue={onAdvance} onWithdraw={onWithdraw}>
+                    {() => <StepDetailContent stepIdx={0} isCurrent={isCurrent} schedule={initialInterviewSchedule} />}
                   </StepGate>
                 ) : step.key === 'pds' ? (
-                  <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} applicationId={applicationId} positionTitle={positionTitle} applicationDate={dateApplied} />
+                  <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={onStepSubmitted} applicationId={applicationId} positionTitle={positionTitle} applicationDate={dateApplied} />
                 ) : step.key === 'sri' ? (
-                  <StepGate stepLabel="SRA (Verbal Test)" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {(markSubmitted) => <SRAContent isCurrent={isCurrent} onSubmit={markSubmitted} />}
+                  <StepGate stepLabel="SRA (Verbal Test)" isCurrent={isCurrent} status={null} onSubmitted={onStepSubmitted} onWithdraw={onWithdraw}>
+                    {(markSubmitted) => <SRAContent isCurrent={isCurrent} onSubmit={markSubmitted} applicationId={applicationId} />}
                   </StepGate>
                 ) : step.key === 'assessment' ? (
-                  <AssessmentContent isCurrent={isCurrent} onSubmit={onSimulateHrComplete} />
+                  <AssessmentContent isCurrent={isCurrent} onSubmit={onStepSubmitted} applicationId={applicationId} />
                 ) : step.key === 'background' ? (
-                  <StepGate stepLabel="Character & Background Check" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {(markSubmitted) => <BackgroundCheckContent isCurrent={isCurrent} onSubmit={markSubmitted} fullName={applicantName} positionTitle={positionTitle} />}
+                  <StepGate stepLabel="Character & Background Check" isCurrent={isCurrent} status={backgroundCheckStatus} onSubmitted={onStepSubmitted} onContinue={onAdvance} onWithdraw={onWithdraw}>
+                    {(markSubmitted) => <BackgroundCheckContent isCurrent={isCurrent} onSubmit={markSubmitted} fullName={applicantName} positionTitle={positionTitle} applicationId={applicationId} />}
                   </StepGate>
                 ) : step.key === 'department' ? (
-                  <StepGate stepLabel="Final Interview" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} />}
+                  <StepGate stepLabel="Final Interview" isCurrent={isCurrent} status={finalInterviewStatus} onSubmitted={onStepSubmitted} onContinue={onAdvance} onWithdraw={onWithdraw}>
+                    {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} schedule={finalInterviewSchedule} />}
                   </StepGate>
                 ) : step.key === 'joboffer' ? (
-                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} onAccept={onSimulateHrComplete} onDecline={onWithdraw} />
+                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} applicationId={applicationId} onAccept={onStepSubmitted} onDecline={onWithdraw} />
                 ) : step.key === 'requirements' ? (
-                  <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} onAdvance={onSimulateHrComplete} onWithdraw={onWithdraw}>
-                    {() => <RequirementsContent docStatuses={docStatuses} docFiles={docFiles} onDocUpload={onDocUpload} isCurrent={isCurrent} />}
+                  <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} status={null} onSubmitted={onStepSubmitted} onWithdraw={onWithdraw}>
+                    {() => <RequirementsContent requirementsData={requirementsData} uploadingKey={uploadingKey} onDocUpload={onDocUpload} isCurrent={isCurrent} />}
                   </StepGate>
                 ) : (
                   <OnboardingContent isCurrent={isCurrent} />
@@ -695,41 +855,124 @@ export default function ApplicantDashboard() {
   const positionTitle = application?.job_postings?.title || '';
   const includeSri = positionTitle === 'Clerk' || positionTitle === 'Checker';
   const steps = buildHiringSteps(includeSri);
-  const applicationStage = statusToStage(application?.status || '');
+  const { stage: applicationStage, rejected } = computeApplicationProgress(
+    application?.status || '',
+    application?.stage || ''
+  );
 
   const [showHiringProcess, setShowHiringProcess] = useState(false);
-  const [hiringCompletedSteps, setHiringCompletedSteps] = useState(0);
-  const [docStatuses, setDocStatuses] = useState<DocStatus[]>(Array(REQUIREMENTS_TOTAL).fill('Pending'));
-  const [docFiles, setDocFiles] = useState<(StoredReqFile | null)[]>(Array(REQUIREMENTS_TOTAL).fill(null));
+  const hiringCompletedSteps = computeHiringStepIndex(
+    application?.stage || '',
+    application?.date_hired ?? null,
+    steps
+  );
+
+  // DB `stage` only moves at HR-driven checkpoints, so sub-steps that
+  // happen *within* a single stage (submitting the PDS/SRA/Assessment,
+  // or clicking Continue after a Passed verdict on Initial Interview /
+  // Final Interview / Background Check) need their own forward-only
+  // counter. This is always kept at least as high as the DB-derived
+  // index, and never moves backward, and resets whenever we switch to a
+  // different application record.
+  const [advancedIdx, setAdvancedIdx] = useState(0);
+  useEffect(() => {
+    setAdvancedIdx((prev) => Math.max(prev, hiringCompletedSteps));
+  }, [hiringCompletedSteps]);
+  useEffect(() => {
+    setAdvancedIdx(0);
+  }, [application?.id]);
+  const effectiveCompletedSteps = Math.max(hiringCompletedSteps, advancedIdx);
+  const advanceLocally = () => setAdvancedIdx((prev) => Math.min(prev + 1, steps.length));
+
+  // Real requirements data, fetched from `applicant_requirements`. Keyed by
+  // the stable `document` slug used both here and in the DB, instead of
+  // the old local-only base64 simulation.
+  const [requirementsData, setRequirementsData] = useState<Record<string, ReqRecord>>({});
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  const fetchRequirements = React.useCallback(() => {
+    if (!application?.id) return;
+    fetch(`/api/requirements?application_id=${encodeURIComponent(application.id)}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((records: { document: string; status: string; file_name: string | null; file_path: string | null }[]) => {
+        const map: Record<string, ReqRecord> = {};
+        for (const r of records) {
+          map[r.document] = {
+            status: r.status === 'Submitted' ? 'Submitted' : 'Pending',
+            fileName: r.file_name,
+            filePath: r.file_path,
+          };
+        }
+        setRequirementsData(map);
+      })
+      .catch(console.error);
+  }, [application?.id]);
+
+  useEffect(() => {
+    fetchRequirements();
+  }, [fetchRequirements]);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [congratsOpen, setCongratsOpen] = useState(false);
   const [withdrawn, setWithdrawn] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState('');
+
+  // Show the congrats screen automatically once HR marks the applicant as
+  // hired (date_hired gets set on the applications row), instead of a
+  // manually-triggered simulation.
+  useEffect(() => {
+    if (application?.date_hired) {
+      setCongratsOpen(true);
+    }
+  }, [application?.date_hired]);
 
   const handleWithdraw = (reason: string) => {
     setWithdrawReason(reason);
     setWithdrawn(true);
   };
 
-  const handleDocUpload = (idx: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setDocFiles((prev) => prev.map((f, i) => (i === idx ? { name: file.name, type: file.type, dataUrl } : f)));
-      setDocStatuses((prev) => prev.map((s, i) => (i === idx ? 'Submitted' : s)));
-    };
-    reader.readAsDataURL(file);
+  const handleDocUpload = async (key: string, file: File) => {
+    if (!application?.id) return;
+    setUploadingKey(key);
+    try {
+      const groupNumber = REQUIREMENTS_MAIN.some((r) => r.key === key)
+        ? 1
+        : REQUIREMENTS_PREV_EMPLOYER.some((r) => r.key === key)
+        ? 2
+        : 3;
+
+      const formData = new FormData();
+      formData.append('application_id', application.id);
+      formData.append('document', key);
+      formData.append('group_number', String(groupNumber));
+      formData.append('file', file);
+
+      const res = await fetch('/api/requirements', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Failed to upload requirement');
+      const body = await res.json();
+      setRequirementsData((prev) => ({
+        ...prev,
+        [key]: {
+          status: 'Submitted',
+          fileName: body.record?.file_name ?? file.name,
+          filePath: body.record?.file_path ?? null,
+        },
+      }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingKey(null);
+    }
   };
 
-  const handleSimulateHrComplete = () => {
-    setHiringCompletedSteps(prev => {
-      const next = Math.min(prev + 1, steps.length);
-      if (next === steps.length) {
-        setDocStatuses(Array(REQUIREMENTS_TOTAL).fill('Submitted'));
-        setCongratsOpen(true);
-      }
-      return next;
-    });
+  // Sub-step components (PDS, SRA, Assessment, Background Check, Job Offer,
+  // Requirements) handle their own submission to the backend. We advance
+  // the local counter immediately so the UI feels responsive, then
+  // re-fetch the application record so any DB-side stage change (made by
+  // HR or by that submission) is reflected as well.
+  const handleStepSubmitted = () => {
+    advanceLocally();
+    fetchApplication();
   };
 
   const handleLogout = () => {
@@ -786,9 +1029,9 @@ export default function ApplicantDashboard() {
             <p className="text-sm" style={{ color: '#6B7A8D' }}>Thank you for your time and interest in Arvin International Marketing Inc. We hope to see your application again in the future.</p>
           </div>
         ) : showHiringProcess ? (
-          <HiringProcessCard key={hiringCompletedSteps} steps={steps} completedSteps={hiringCompletedSteps} docStatuses={docStatuses} docFiles={docFiles} onDocUpload={handleDocUpload} onSimulateHrComplete={handleSimulateHrComplete} applicantName={name} onWithdraw={handleWithdraw} applicationId={application?.id ?? null} positionTitle={positionTitle} dateApplied={application?.date_applied ?? null} />
+          <HiringProcessCard key={effectiveCompletedSteps} steps={steps} completedSteps={effectiveCompletedSteps} requirementsData={requirementsData} uploadingKey={uploadingKey} onDocUpload={handleDocUpload} onStepSubmitted={handleStepSubmitted} onAdvance={advanceLocally} applicantName={name} onWithdraw={handleWithdraw} applicationId={application?.id ?? null} positionTitle={positionTitle} dateApplied={application?.date_applied ?? null} initialInterviewSchedule={application?.initial_interview_schedule ?? null} finalInterviewSchedule={application?.final_interview_schedule ?? null} initialInterviewStatus={normalizeInterviewStatus(application?.interview_status)} backgroundCheckStatus={normalizeEvStatus(application?.employment_verification_status)} finalInterviewStatus={normalizeFinalInterviewStatus(application?.stage || '', application?.status || '')} />
         ) : (
-          <ApplicationStatusCard stage={applicationStage} onContinue={() => setModalOpen(true)} />
+          <ApplicationStatusCard stage={applicationStage} rejected={rejected} onContinue={() => setModalOpen(true)} />
         )}
       </div>
 

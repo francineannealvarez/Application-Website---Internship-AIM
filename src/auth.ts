@@ -10,6 +10,14 @@ type Role = 'APPLICANT' | 'HR_ADMIN';
 // email, with no password ever shown to the applicant. We verify identity by
 // looking up the most recent `applications` row for that email and checking
 // that the provided name matches `full_name` on record.
+//
+// This authorize() flow only ever authenticates against the `applications`
+// table, so it only ever represents an applicant logging in — there's no
+// path here for an HR admin to authenticate. The role is therefore always
+// "APPLICANT". (The old `profiles` table used to be queried here for a
+// `role` column, but that table has been removed on the Supabase side —
+// HR-side role info now lives in a separate, staff-only `hr_profiles` table
+// that this applicant-facing login has no reason to touch.)
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
     CredentialsProvider({
@@ -40,11 +48,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           throw new Error("Invalid credentials");
         }
 
-        const profile = await db.profiles.findUnique({
-          where: { id: application.applicant_user_id },
-        });
-
-        const role = (profile?.role?.toUpperCase() as Role) || "APPLICANT";
+        const role: Role = "APPLICANT";
 
         return {
           id: application.applicant_user_id,

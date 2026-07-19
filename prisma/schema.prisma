@@ -452,7 +452,8 @@ model users {
   webauthn_challenges         webauthn_challenges[]
   webauthn_credentials        webauthn_credentials[]
   applications                applications[]
-  profiles                    profiles?
+  hr_profiles                 hr_profiles?
+  notifications               notifications[]
 
   @@index([created_at(sort: Desc)], map: "idx_users_created_at_desc")
   @@index([email], map: "idx_users_email")
@@ -529,11 +530,20 @@ model applications {
   is_manpower_pool               Boolean                     @default(false)
   created_at                     DateTime?                   @default(now()) @db.Timestamptz(6)
   updated_at                     DateTime?                   @default(now()) @db.Timestamptz(6)
+  resume_file_path               String?
+  resume_file_name               String?
+  resume_file_size_label         String?
+  cover_letter_file_path         String?
+  cover_letter_file_name         String?
+  cover_letter_file_size_label   String?
+  archive_note                   String?
+  applicant_id                   String                      @db.Uuid
   applicant_assessment           applicant_assessment?
   applicant_background_check     applicant_background_check?
   applicant_pds                  applicant_pds?
   applicant_requirements         applicant_requirements[]
   applicant_sra                  applicant_sra?
+  applicants                     applicants                  @relation(fields: [applicant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users                          users?                      @relation(fields: [applicant_user_id], references: [id], onUpdate: NoAction)
   job_postings                   job_postings                @relation(fields: [job_id], references: [id], onUpdate: NoAction)
 
@@ -559,6 +569,8 @@ model job_postings {
   date_posted      DateTime       @default(dbgenerated("CURRENT_DATE")) @db.Date
   created_at       DateTime?      @default(now()) @db.Timestamptz(6)
   updated_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  date_closed      DateTime?      @db.Date
+  status           String         @default("Open")
   applications     applications[]
 
   @@schema("public")
@@ -573,110 +585,100 @@ model notifications {
   is_read    Boolean?  @default(false)
   related_id String?   @db.Uuid
   created_at DateTime? @default(now()) @db.Timestamptz(6)
-  profiles   profiles  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model profiles {
-  id            String          @id @db.Uuid
-  full_name     String
-  role          String
-  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
-  notifications notifications[]
-  users         users           @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles   users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model applicant_pds {
-  application_id            String       @id @db.Uuid
-  last_name                 String?
-  first_name                String?
-  middle_name               String?
-  nickname                  String?
-  present_address           Json?
-  provincial_address        Json?
-  how_often_visit_province  String?
-  travel_time_minutes       String?
-  residence_number          String?
-  cellphone                 String?
-  email                     String?
-  religion                  String?
-  desired_salary            String?
-  date_of_birth             DateTime?    @db.Date
-  place_of_birth            String?
-  nationality               String?
-  sex                       String?
-  age                       String?
-  height                    String?
-  weight                    String?
-  civil_status              String?
-  sss_number                String?
-  tin                       String?
-  pagibig_number            String?
-  philhealth_number         String?
-  health_issues             Json?
-  father_name               String?
-  father_address            String?
-  father_occupation         String?
-  father_age                String?
-  father_na                 Boolean?     @default(false)
-  mother_name               String?
-  mother_address            String?
-  mother_occupation         String?
-  mother_age                String?
-  mother_na                 Boolean?     @default(false)
-  spouse_name               String?
-  spouse_address            String?
-  spouse_occupation         String?
-  spouse_age                String?
-  spouse_na                 Boolean?     @default(true)
-  siblings                  Json?        @default("[]")
-  siblings_na               Boolean?     @default(true)
-  children                  Json?        @default("[]")
-  has_relative_in_company   String?
-  relatives                 Json?        @default("[]")
-  elementary                Json?
-  secondary                 Json?
-  college                   Json?
-  post_graduate             Json?
-  vocational                Json?
-  why_took_course           String?
-  licenses                  Json?        @default("[]")
-  licenses_na               Boolean?     @default(true)
-  gov_exams                 Json?        @default("[]")
-  gov_exams_na              Boolean?     @default(true)
-  trainings                 Json?        @default("[]")
-  trainings_na              Boolean?     @default(true)
-  activities                Json?        @default("[]")
-  activities_na             Boolean?     @default(true)
-  special_skills            String?
-  employment_record         Json?        @default("[]")
-  character_references      Json?        @default("[]")
-  character_references_na   Boolean?     @default(true)
-  emergency_name            String?
-  emergency_relationship    String?
-  emergency_telephone       String?
-  emergency_address         String?
-  declarations              Json?
-  personality_profiling     Json?
-  work_preferences          Json?
-  certify_truth_correctness Boolean?     @default(false)
-  signature_name            String?
-  photo_file_path           String?
-  photo_file_name           String?
-  signature_file_path       String?
-  signature_file_name       String?
-  sketch_file_path          String?
-  sketch_file_name          String?
-  submitted_at              DateTime?    @db.Timestamptz(6)
-  created_at                DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at                DateTime     @default(now()) @db.Timestamptz(6)
-  applications              applications @relation(fields: [application_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  application_id                  String       @id @db.Uuid
+  last_name                       String?
+  first_name                      String?
+  middle_name                     String?
+  nickname                        String?
+  present_address                 Json?
+  provincial_address              Json?
+  how_often_visit_province        String?
+  travel_time_minutes             String?
+  residence_number                String?
+  cellphone                       String?
+  email                           String?
+  religion                        String?
+  desired_salary                  String?
+  date_of_birth                   DateTime?    @db.Date
+  place_of_birth                  String?
+  nationality                     String?
+  sex                             String?
+  age                             String?
+  height                          String?
+  weight                          String?
+  civil_status                    String?
+  sss_number                      String?
+  tin                             String?
+  pagibig_number                  String?
+  philhealth_number               String?
+  health_issues                   Json?
+  father_name                     String?
+  father_address                  String?
+  father_occupation               String?
+  father_age                      String?
+  father_na                       Boolean?     @default(false)
+  mother_name                     String?
+  mother_address                  String?
+  mother_occupation               String?
+  mother_age                      String?
+  mother_na                       Boolean?     @default(false)
+  spouse_name                     String?
+  spouse_address                  String?
+  spouse_occupation               String?
+  spouse_age                      String?
+  spouse_na                       Boolean?     @default(true)
+  siblings                        Json?        @default("[]")
+  siblings_na                     Boolean?     @default(true)
+  children                        Json?        @default("[]")
+  has_relative_in_company         String?
+  relatives                       Json?        @default("[]")
+  elementary                      Json?
+  secondary                       Json?
+  college                         Json?
+  post_graduate                   Json?
+  vocational                      Json?
+  why_took_course                 String?
+  licenses                        Json?        @default("[]")
+  licenses_na                     Boolean?     @default(true)
+  gov_exams                       Json?        @default("[]")
+  gov_exams_na                    Boolean?     @default(true)
+  trainings                       Json?        @default("[]")
+  trainings_na                    Boolean?     @default(true)
+  activities                      Json?        @default("[]")
+  activities_na                   Boolean?     @default(true)
+  special_skills                  String?
+  employment_record               Json?        @default("[]")
+  character_references            Json?        @default("[]")
+  character_references_na         Boolean?     @default(true)
+  emergency_name                  String?
+  emergency_relationship          String?
+  emergency_telephone             String?
+  emergency_address               String?
+  declarations                    Json?
+  personality_profiling           Json?
+  work_preferences                Json?
+  certify_truth_correctness       Boolean?     @default(false)
+  signature_name                  String?
+  submitted_at                    DateTime?    @db.Timestamptz(6)
+  created_at                      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime     @default(now()) @db.Timestamptz(6)
+  photo_file_path                 String?
+  photo_file_name                 String?
+  signature_file_path             String?
+  signature_file_name             String?
+  sketch_file_path                String?
+  sketch_file_name                String?
+  location_sketch_file_path       String?
+  location_sketch_file_name       String?
+  location_sketch_file_size_label String?
+  applications                    applications @relation(fields: [application_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -747,6 +749,33 @@ model applicant_sra {
   created_at      DateTime     @default(now()) @db.Timestamptz(6)
   updated_at      DateTime     @default(now()) @db.Timestamptz(6)
   applications    applications @relation(fields: [application_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model applicants {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicant_user_id String?        @db.Uuid
+  full_name         String
+  email             String
+  phone             String?
+  created_at        DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime       @default(now()) @db.Timestamptz(6)
+  applications      applications[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model hr_profiles {
+  id         String    @id @db.Uuid
+  email      String
+  full_name  String
+  role       String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }

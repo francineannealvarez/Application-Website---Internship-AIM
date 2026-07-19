@@ -1,5 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+async function uploadPdsFile(
+  supabaseAdmin: ReturnType<typeof createAdminClient>,
+  bucket: string,
+  applicationId: string,
+  prefix: string,
+  file: File
+): Promise<{ path: string; name: string; sizeLabel: string }> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${applicationId}/${prefix}-${Date.now()}-${safeName}`;
+
+  const { error } = await supabaseAdmin.storage.from(bucket).upload(path, buffer, {
+    contentType: file.type || "application/octet-stream",
+    upsert: true,
+  });
+
+  if (error) {
+    throw new Error(`Failed to upload ${prefix}: ${error.message}`);
+  }
+
+  const sizeLabel =
+    file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${(file.size / 1024).toFixed(0)} KB`;
+
+  return { path, name: file.name, sizeLabel };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +56,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const formData = await request.formData();
+    const rawData = formData.get("data");
+
+    if (typeof rawData !== "string") {
+      return NextResponse.json(
+        { error: "Missing form data" },
+        { status: 400 }
+      );
+    }
+
+    const body = JSON.parse(rawData);
     const { application_id, ...fields } = body;
 
     if (!application_id) {
@@ -35,6 +74,32 @@ export async function POST(request: NextRequest) {
         { error: "application_id is required" },
         { status: 400 }
       );
+    }
+
+    const supabaseAdmin = createAdminClient();
+
+    // Upload photo and signature to the applicant-pds bucket, and the
+    // sketch to the applicant-location-sketch bucket (matches the
+    // existing bucket already used for that purpose).
+    let photoData: { path: string; name: string } | null = null;
+    let signatureData: { path: string; name: string } | null = null;
+    let sketchData: { path: string; name: string; sizeLabel: string } | null = null;
+
+    const photoFile = formData.get("photo");
+    if (photoFile instanceof File && photoFile.size > 0) {
+      const uploaded = await uploadPdsFile(supabaseAdmin, "applicant-pds", application_id, "photo", photoFile);
+      photoData = { path: uploaded.path, name: uploaded.name };
+    }
+
+    const signatureFile = formData.get("signature");
+    if (signatureFile instanceof File && signatureFile.size > 0) {
+      const uploaded = await uploadPdsFile(supabaseAdmin, "applicant-pds", application_id, "signature", signatureFile);
+      signatureData = { path: uploaded.path, name: uploaded.name };
+    }
+
+    const sketchFile = formData.get("sketch");
+    if (sketchFile instanceof File && sketchFile.size > 0) {
+      sketchData = await uploadPdsFile(supabaseAdmin, "applicant-location-sketch", application_id, "sketch", sketchFile);
     }
 
     const data = {
@@ -111,6 +176,19 @@ export async function POST(request: NextRequest) {
       work_preferences: fields.work_preferences ?? null,
       certify_truth_correctness: fields.certify_truth_correctness ?? false,
       signature_name: fields.signature_name ?? null,
+      ...(photoData
+        ? { photo_file_path: photoData.path, photo_file_name: photoData.name }
+        : {}),
+      ...(signatureData
+        ? { signature_file_path: signatureData.path, signature_file_name: signatureData.name }
+        : {}),
+      ...(sketchData
+        ? {
+            location_sketch_file_path: sketchData.path,
+            location_sketch_file_name: sketchData.name,
+            location_sketch_file_size_label: sketchData.sizeLabel,
+          }
+        : {}),
       submitted_at: new Date(),
       updated_at: new Date(),
     };

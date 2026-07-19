@@ -1,22 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { db } from "@/lib/db";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-async function saveUpload(file: File, prefix: string) {
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadDir, { recursive: true });
+// Resume and cover letter both live in the same bucket (applicant-resume),
+// namespaced by a subfolder per document type. There's no per-user folder
+// restriction on the bucket's RLS policies (they only check bucket_id), so
+// this naming convention is purely for our own organization.
+const RESUME_BUCKET = "applicant-resume";
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function uploadToStorage(
+  supabaseAdmin: ReturnType<typeof createAdminClient>,
+  file: File,
+  folder: string
+): Promise<{ path: string; name: string; sizeLabel: string }> {
   const timestamp = Date.now();
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const fileName = `${timestamp}-${prefix}${safeName}`;
-  const diskPath = path.join(uploadDir, fileName);
+  const storagePath = `${folder}/${timestamp}-${safeName}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(diskPath, buffer);
 
-  return `/uploads/${fileName}`;
+  const { error } = await supabaseAdmin.storage
+    .from(RESUME_BUCKET)
+    .upload(storagePath, buffer, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  return { path: storagePath, name: file.name, sizeLabel: formatFileSize(file.size) };
 }
 
 export async function POST(request: NextRequest) {
@@ -27,6 +46,7 @@ export async function POST(request: NextRequest) {
     const positionId = formData.get("positionId") as string;
     const phoneNumber = (formData.get("phoneNumber") as string) || null;
     const resumeFile = formData.get("resume") as File;
+    const coverLetterFile = formData.get("coverLetter") as File | null;
 
     if (!fullName || !email) {
       return NextResponse.json(
@@ -83,31 +103,75 @@ export async function POST(request: NextRequest) {
       userId = created.user.id;
     }
 
-    // Ensure a matching profile exists
-    const existingProfile = await db.profiles.findUnique({
-      where: { id: userId },
+    // Find or create the matching row in `applicants` — this is a separate
+    // table from `users` (Supabase Auth) and is what `applications.applicant_id`
+    // (a required FK) points to. One applicant can have multiple applications
+    // over time, so we look it up by applicant_user_id first.
+    let applicantRecord = await db.applicants.findFirst({
+      where: { applicant_user_id: userId },
     });
-    if (!existingProfile) {
-      await db.profiles.create({
+
+    if (!applicantRecord) {
+      applicantRecord = await db.applicants.create({
         data: {
-          id: userId,
+          applicant_user_id: userId,
           full_name: fullName,
-          role: "applicant",
+          email: email,
+          phone: phoneNumber,
         },
       });
     }
 
-    // Save the resume file to disk (note: no resume_url column exists yet on
-    // applications — see note below)
-    await saveUpload(resumeFile, "");
+    // Upload resume (required) to Supabase Storage, namespaced under this
+    // applicant's own id so every resume/cover letter they ever submit
+    // (across multiple applications) lives under the same folder.
+    let resumeUpload;
+    try {
+      resumeUpload = await uploadToStorage(
+        supabaseAdmin,
+        resumeFile,
+        `${applicantRecord.id}/resume`
+      );
+    } catch (err) {
+      console.error("Resume upload error:", err);
+      return NextResponse.json(
+        { error: "Failed to upload resume. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    // Cover letter is optional.
+    let coverLetterUpload: Awaited<ReturnType<typeof uploadToStorage>> | null = null;
+    if (coverLetterFile && coverLetterFile.size > 0) {
+      try {
+        coverLetterUpload = await uploadToStorage(
+          supabaseAdmin,
+          coverLetterFile,
+          `${applicantRecord.id}/cover-letter`
+        );
+      } catch (err) {
+        console.error("Cover letter upload error:", err);
+        return NextResponse.json(
+          { error: "Failed to upload cover letter. Please try again." },
+          { status: 500 }
+        );
+      }
+    }
 
     const application = await db.applications.create({
       data: {
         applicant_user_id: userId,
+        applicant_id: applicantRecord.id,
         job_id: positionId,
         full_name: fullName,
         email: email,
         phone: phoneNumber,
+        resume_file_path: resumeUpload.path,
+        resume_file_name: resumeUpload.name,
+        resume_file_size_label: resumeUpload.sizeLabel,
+        cover_letter_file_path: coverLetterUpload?.path ?? null,
+        cover_letter_file_name: coverLetterUpload?.name ?? null,
+        cover_letter_file_size_label: coverLetterUpload?.sizeLabel ?? null,
       },
     });
 

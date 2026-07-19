@@ -12,13 +12,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const records = await db.applicant_requirements.findMany({
+    const record = await db.applicant_background_check.findUnique({
       where: { application_id: applicationId },
     });
 
-    return NextResponse.json(records);
+    return NextResponse.json(record);
   } catch (error) {
-    console.error("Get requirements error:", error);
+    console.error("Get background check error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -30,60 +30,51 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const applicationId = formData.get("application_id") as string;
-    const document = formData.get("document") as string;
-    const groupNumberRaw = formData.get("group_number") as string;
-    const file = formData.get("file") as File;
+    const dateSigned = formData.get("date_signed") as string;
+    const signatureFile = formData.get("signature") as File;
 
-    if (!applicationId || !document) {
+    if (!applicationId) {
       return NextResponse.json(
-        { error: "application_id and document are required" },
+        { error: "application_id is required" },
         { status: 400 }
       );
     }
 
-    if (!file || file.size === 0) {
+    if (!dateSigned || !signatureFile || signatureFile.size === 0) {
       return NextResponse.json(
-        { error: "File is required" },
+        { error: "Date signed and signature are required" },
         { status: 400 }
       );
     }
 
-    const groupNumber = parseInt(groupNumberRaw, 10);
-    const saved = await saveUpload(file, "requirement-");
+    const saved = await saveUpload(signatureFile, "bgcheck-signature-");
 
-    const record = await db.applicant_requirements.upsert({
-      where: {
-        application_id_document: {
-          application_id: applicationId,
-          document,
-        },
-      },
+    const record = await db.applicant_background_check.upsert({
+      where: { application_id: applicationId },
       update: {
         status: "Submitted",
-        file_path: saved.path,
-        file_name: saved.name,
-        file_size_label: saved.sizeLabel,
-        date_submitted: new Date(),
+        signature_file_path: saved.path,
+        signature_file_name: saved.name,
+        date_signed: new Date(dateSigned),
+        submitted_at: new Date(),
         updated_at: new Date(),
       },
       create: {
         application_id: applicationId,
-        document,
-        group_number: Number.isNaN(groupNumber) ? 1 : groupNumber,
         status: "Submitted",
-        file_path: saved.path,
-        file_name: saved.name,
-        file_size_label: saved.sizeLabel,
-        date_submitted: new Date(),
+        signature_file_path: saved.path,
+        signature_file_name: saved.name,
+        date_signed: new Date(dateSigned),
+        submitted_at: new Date(),
       },
     });
 
     return NextResponse.json(
-      { message: "Requirement submitted", record },
+      { message: "Background check authorization submitted", record },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Save requirement error:", error);
+    console.error("Save background check error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

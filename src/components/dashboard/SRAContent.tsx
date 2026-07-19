@@ -17,20 +17,39 @@ const T = {
 // Update this link if the exam file ever moves to a different location.
 const SRA_EXAM_URL = 'https://drive.google.com/file/d/1my-j6Hsnr-Iuoc1BHE_dMu3BQGB4hP5F/view?usp=sharing';
 
-export default function SRAContent({ isCurrent, onSubmit }: { isCurrent: boolean; onSubmit: () => void }) {
+export default function SRAContent({ isCurrent, onSubmit, applicationId }: { isCurrent: boolean; onSubmit: () => void; applicationId: string | null }) {
   const [submitted, setSubmitted] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [fileError, setFileError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canSubmit = acknowledged && file !== null;
+  const canSubmit = acknowledged && file !== null && applicationId !== null && !submitting;
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    setSubmitted(true);
-    onSubmit();
+  const handleSubmit = async () => {
+    if (!canSubmit || !applicationId || !file) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const formData = new FormData();
+      formData.append('application_id', applicationId);
+      formData.append('file', file);
+
+      const res = await fetch('/api/sra', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to submit SRA answer sheet');
+      }
+      setSubmitted(true);
+      onSubmit();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit SRA answer sheet');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleFile = (f: File) => {
@@ -122,7 +141,7 @@ export default function SRAContent({ isCurrent, onSubmit }: { isCurrent: boolean
             onDrop={onDrop}
             className="flex flex-col items-center justify-center px-4 py-6 rounded-xl cursor-pointer transition-all duration-150"
             style={{
-              
+
               backgroundColor: dragging ? T.cyanBg : T.bg
             }}
           >
@@ -152,6 +171,13 @@ export default function SRAContent({ isCurrent, onSubmit }: { isCurrent: boolean
         <span>I confirm that the uploaded answer sheet is complete and accurate to the best of my knowledge.</span>
       </button>
 
+      {submitError && (
+        <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', color: '#9F1239' }}>
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>{submitError}</span>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={handleSubmit}
@@ -161,7 +187,7 @@ export default function SRAContent({ isCurrent, onSubmit }: { isCurrent: boolean
           ? { backgroundColor: T.navy, color: '#fff', cursor: 'pointer' }
           : { backgroundColor: T.locked, color: T.gray, cursor: 'not-allowed' }}
       >
-        {canSubmit ? 'Submit SRA Answer Sheet' : !file ? 'Upload your answer sheet to continue' : 'Check the box above to continue'}
+        {submitting ? 'Submitting...' : canSubmit ? 'Submit SRA Answer Sheet' : !file ? 'Upload your answer sheet to continue' : 'Check the box above to continue'}
       </button>
 
       {isCurrent && (

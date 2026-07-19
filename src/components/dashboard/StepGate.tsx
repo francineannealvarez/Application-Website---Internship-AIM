@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, HeartHandshake, Clock, LogOut, Check, Send, Search, ThumbsUp, ThumbsDown } from 'lucide-react';
-
-type Phase = 'active' | 'submitted' | 'reviewing' | 'passed' | 'failed';
+import { Sparkles, HeartHandshake, Search, LogOut } from 'lucide-react';
 
 const T = {
   navy: '#0B2A4A',
@@ -25,34 +23,35 @@ const WITHDRAW_REASONS = [
   'Other',
 ];
 
-function DevToolCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mt-3 rounded-xl border-2 border-dashed p-4" style={{ borderColor: T.cyanBorder, backgroundColor: T.cyanBg }}>
-      <p className="text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: T.cyan }}>
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
+// Real DB-derived status for this step. `null` means there's no HR verdict
+// yet (either the applicant hasn't submitted, or this step has no dedicated
+// status column and progress is only tracked via the overall `stage`).
+export type StepGateStatus = 'reviewing' | 'passed' | 'failed' | 'discontinued' | null | undefined;
 
 export default function StepGate({
   stepLabel,
   isCurrent,
-  onAdvance,
+  status,
   onWithdraw,
+  onSubmitted,
+  onContinue,
   children,
 }: {
   stepLabel: string;
   isCurrent: boolean;
-  onAdvance: () => void;
+  status?: StepGateStatus;
   onWithdraw: (reason: string) => void;
+  onSubmitted?: () => void;
+  onContinue?: () => void;
   children: (markSubmitted: () => void) => React.ReactNode;
 }) {
-  const [phase, setPhase] = useState<Phase>('active');
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
   const [reason, setReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
+
+  const markSubmitted = () => {
+    onSubmitted?.();
+  };
 
   if (!isCurrent) {
     return <>{children(() => {})}</>;
@@ -64,65 +63,25 @@ export default function StepGate({
     onWithdraw(finalReason);
   };
 
-  if (phase === 'active') {
-    return (
-      <>
-        {children(() => setPhase('submitted'))}
-        <DevToolCard title="Dev Tool — Testing Only">
-          <button type="button" onClick={() => setPhase('submitted')}
-            className="w-full flex items-center justify-center gap-2 py-3 font-semibold rounded-lg text-sm text-white shadow-sm hover:opacity-90 transition-all"
-            style={{ backgroundColor: T.navy }}>
-            <Send className="w-4 h-4" /> Simulate: Mark This Step as Submitted
-          </button>
-        </DevToolCard>
-      </>
-    );
-  }
-
-  if (phase === 'submitted') {
+  if (status === 'failed' || status === 'discontinued') {
     return (
       <div className="pt-3 space-y-3">
-        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
-          <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
-          <span style={{ color: T.navy }}>{stepLabel} submitted! We will start reviewing it soon.</span>
-        </div>
-        <DevToolCard title="Dev Tool — Testing Only">
-          <button type="button" onClick={() => setPhase('reviewing')}
-            className="w-full flex items-center justify-center gap-2 py-3 font-semibold rounded-lg text-sm text-white shadow-sm hover:opacity-90 transition-all"
-            style={{ backgroundColor: T.navy }}>
-            <Search className="w-4 h-4" /> Simulate: Move to Under Review
-          </button>
-        </DevToolCard>
-      </div>
-    );
-  }
-
-  if (phase === 'reviewing') {
-    return (
-      <div className="pt-3 space-y-3">
-        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
-          <Clock className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
-          <span style={{ color: T.navy }}>Our HR team is currently reviewing this stage. This typically takes 3-5 business days.</span>
-        </div>
-        <DevToolCard title="Dev Tool — Simulate HR Decision">
-          <div className="flex flex-col sm:flex-row gap-2.5">
-            <button type="button" onClick={() => setPhase('passed')}
-              className="flex-1 flex items-center justify-center gap-2 py-3 font-semibold rounded-lg text-sm text-white shadow-sm hover:opacity-90 transition-all"
-              style={{ backgroundColor: T.cyan }}>
-              <ThumbsUp className="w-4 h-4" /> Simulate: Pass
-            </button>
-            <button type="button" onClick={() => setPhase('failed')}
-              className="flex-1 flex items-center justify-center gap-2 py-3 font-semibold rounded-lg text-sm border-2 shadow-sm hover:bg-black/5 transition-all"
-              style={{ color: T.gray, borderColor: T.locked, backgroundColor: '#fff' }}>
-              <ThumbsDown className="w-4 h-4" /> Simulate: Not Selected
-            </button>
+        <div className="rounded-2xl border-2 p-6 text-center space-y-2" style={{ backgroundColor: T.cyanBg, borderColor: T.cyanBorder }}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: '#fff' }}>
+            <HeartHandshake className="w-6 h-6" style={{ color: T.cyan }} />
           </div>
-        </DevToolCard>
+          <p className="text-lg font-bold" style={{ color: T.navy }}>Thank You for Your Time</p>
+          <p className="text-sm max-w-sm mx-auto" style={{ color: T.gray }}>
+            {status === 'discontinued'
+              ? `Your ${stepLabel} step was discontinued. We won't be moving forward with your application for this particular role right now, but we'd love for you to apply again for future openings at Arvin.`
+              : `We won't be moving forward with your application for this particular role right now, but we were genuinely impressed by parts of your application and would love for you to apply again for future openings at Arvin.`}
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (phase === 'passed') {
+  if (status === 'passed') {
     if (showWithdrawForm) {
       const canConfirm = reason && (reason !== 'Other' || otherReason.trim().length > 0);
       return (
@@ -165,10 +124,17 @@ export default function StepGate({
           <p className="text-sm text-green-800 max-w-sm mx-auto">You passed the {stepLabel} stage and are eligible to move forward to the next step.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2.5">
-          <button type="button" onClick={onAdvance}
-            className="flex-1 py-3 text-white font-semibold rounded-lg text-sm shadow-sm hover:opacity-90 transition-all" style={{ backgroundColor: T.navy }}>
-            Continue to Next Stage
-          </button>
+          {onContinue ? (
+            <button type="button" onClick={onContinue}
+              className="flex-1 py-3 text-white font-semibold rounded-lg text-sm shadow-sm hover:opacity-90 transition-all"
+              style={{ backgroundColor: T.navy }}>
+              Continue to Next Step
+            </button>
+          ) : (
+            <div className="flex-1 py-3 rounded-lg text-sm font-medium text-center flex items-center justify-center" style={{ backgroundColor: T.cyanBg, color: T.navy }}>
+              HR will advance you to the next stage shortly.
+            </div>
+          )}
           <button type="button" onClick={() => setShowWithdrawForm(true)}
             className="flex-1 py-3 border-2 font-semibold rounded-lg text-sm flex items-center justify-center gap-1.5 hover:bg-red-50 transition-all" style={{ color: '#DC2626', borderColor: '#FCA5A5' }}>
             <LogOut className="w-4 h-4" /> Withdraw Application
@@ -178,18 +144,20 @@ export default function StepGate({
     );
   }
 
-  // phase === 'failed'
-  return (
-    <div className="pt-3 space-y-3">
-      <div className="rounded-2xl border-2 p-6 text-center space-y-2" style={{ backgroundColor: T.cyanBg, borderColor: T.cyanBorder }}>
-        <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: '#fff' }}>
-          <HeartHandshake className="w-6 h-6" style={{ color: T.cyan }} />
+  if (status === 'reviewing') {
+    return (
+      <div className="pt-3 space-y-3">
+        {children(markSubmitted)}
+        <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
+          <Search className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
+          <span style={{ color: T.navy }}>Our HR team is currently reviewing this stage. This typically takes 3-5 business days.</span>
         </div>
-        <p className="text-lg font-bold" style={{ color: T.navy }}>Thank You for Your Time</p>
-        <p className="text-sm max-w-sm mx-auto" style={{ color: T.gray }}>
-          We won&apos;t be moving forward with your application for this particular role right now, but we were genuinely impressed by parts of your application and would love for you to apply again for future openings at Arvin.
-        </p>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // status is null/undefined: no HR verdict yet on this step. Just render
+  // the wrapped content - it's responsible for its own "awaiting HR" or
+  // "awaiting your submission" messaging.
+  return <>{children(markSubmitted)}</>;
 }

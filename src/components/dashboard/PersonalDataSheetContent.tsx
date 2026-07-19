@@ -6,9 +6,9 @@ import {
   Briefcase, Phone, Shield, HeartPulse, ClipboardList, PenLine, Info, Upload
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
    Theme tokens — matches the rest of src/app/dashboard/page.tsx exactly
-   ───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────── */
 const T = {
   navy: '#0B2A4A',
   cyan: '#12B6D6',
@@ -25,9 +25,9 @@ function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
    Generic field primitives
-   ───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────── */
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-semibold mb-1.5" style={{ color: T.navy }}>{children}</label>;
 }
@@ -114,9 +114,9 @@ function Checkbox({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
    Accordion section wrapper
-   ───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────── */
 function Section({ id, icon: Icon, title, subtitle, openId, setOpenId, children }: {
   id: string; icon: React.ElementType; title: string; subtitle: string;
   openId: string | null; setOpenId: (id: string | null) => void; children: React.ReactNode;
@@ -154,9 +154,9 @@ function Section({ id, icon: Icon, title, subtitle, openId, setOpenId, children 
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
    Repeating row helpers
-   ───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────── */
 function RepeatingRows<T>({ rows, setRows, empty, fields }: {
   rows: T[]; setRows: (rows: T[]) => void; empty: T;
   fields: { key: keyof T; label: string; grow?: boolean }[];
@@ -225,12 +225,12 @@ function NAPersonSection({ label, na, setNa, state, setState, nameLabel = 'Name'
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
    Philippine address data & other dropdown option lists
    Note: City/Municipality and Barangay stay as free text — the full PSGC
    list (1,600+ cities/municipalities, 42,000+ barangays) is too large to
    embed here, but Region and Province are real dropdowns.
-   ───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────── */
 const PH_REGIONS = [
   'NCR – National Capital Region',
   'CAR – Cordillera Administrative Region',
@@ -294,9 +294,9 @@ const HOW_LEARNED_OPTIONS = [
 
 const CHILDREN_COUNT_OPTIONS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
    Form state shape
-   ───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────── */
 type Person = { name: string; address: string; occupation: string; age: string };
 type Child = { name: string; age: string };
 type Relative = { name: string; positionDept: string; relationship: string };
@@ -321,9 +321,9 @@ const emptyJob: JobRow = {
 };
 const emptyRef: RefRow = { name: '', occupation: '', telephone: '', address: '' };
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
    Main component
-   ───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────── */
 export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicationId, positionTitle, applicationDate }: { isCurrent: boolean; onSubmit: () => void; applicationId: number | string | null; positionTitle?: string; applicationDate?: string | Date | null; }) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -371,9 +371,11 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
 
   // -- Photo --
   const [photo, setPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoConfirmed, setPhotoConfirmed] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const handlePhotoFile = (file: File) => {
+    setPhotoFile(file);
     const reader = new FileReader();
     reader.onload = () => { setPhoto(reader.result as string); setPhotoConfirmed(false); };
     reader.readAsDataURL(file);
@@ -475,17 +477,21 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
   const [certify, setCertify] = useState(false);
   const [eSignature, setESignature] = useState('');
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const handleSignatureFile = (file: File) => {
+    setSignatureFile(file);
     const reader = new FileReader();
     reader.onload = () => setSignatureImage(reader.result as string);
     reader.readAsDataURL(file);
   };
 
   const [sketchImage, setSketchImage] = useState<string | null>(null);
+  const [sketchFile, setSketchFile] = useState<File | null>(null);
   const [sketchFileName, setSketchFileName] = useState('');
   const sketchInputRef = useRef<HTMLInputElement>(null);
   const handleSketchFile = (file: File) => {
+    setSketchFile(file);
     setSketchFileName(file.name);
     const reader = new FileReader();
     reader.onload = () => setSketchImage(reader.result as string);
@@ -741,10 +747,15 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
     };
 
     try {
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(payload));
+      if (photoFile) formData.append('photo', photoFile);
+      if (signatureFile) formData.append('signature', signatureFile);
+      if (sketchFile) formData.append('sketch', sketchFile);
+
       const res = await fetch('/api/pds', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!res.ok) {

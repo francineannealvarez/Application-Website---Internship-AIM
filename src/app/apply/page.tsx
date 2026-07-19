@@ -148,6 +148,7 @@ export default function ApplyPage() {
       formData.append("positionId", selectedPosition.id);
       formData.append("phoneNumber", form.phone);
       if (file) formData.append("resume", file);
+      if (coverLetterFile) formData.append("coverLetter", coverLetterFile);
 
       const res = await fetch("/api/applications", {
         method: "POST",

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Check, Clock, Upload, X, ShieldCheck } from 'lucide-react';
+import { Check, Clock, Upload, X, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const T = {
   navy: '#0B2A4A',
@@ -18,11 +18,13 @@ const T = {
 const selectCls = 'px-3 py-2.5 text-sm rounded-lg border outline-none transition-colors focus:border-[#12B6D6]';
 const selectStyle: React.CSSProperties = { backgroundColor: '#F7F9FA',  color: '#0B2A4A' };
 
-export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, positionTitle }: { isCurrent: boolean; onSubmit: () => void; fullName?: string; positionTitle?: string }) {
+export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, positionTitle, applicationId }: { isCurrent: boolean; onSubmit: () => void; fullName?: string; positionTitle?: string; applicationId: string | null }) {
   const [submitted, setSubmitted] = useState(false);
   const [dateSigned, setDateSigned] = useState('');
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
@@ -32,12 +34,30 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, 
     reader.readAsDataURL(file);
   };
 
-  const canSubmit = Boolean(dateSigned && signatureFile);
+  const canSubmit = Boolean(dateSigned && signatureFile && applicationId && !submitting);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    setSubmitted(true);
-    onSubmit();
+  const handleSubmit = async () => {
+    if (!canSubmit || !applicationId || !signatureFile) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const formData = new FormData();
+      formData.append('application_id', applicationId);
+      formData.append('date_signed', dateSigned);
+      formData.append('signature', signatureFile);
+
+      const res = await fetch('/api/background-check', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to submit authorization form');
+      }
+      setSubmitted(true);
+      onSubmit();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit authorization form');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -134,7 +154,14 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, 
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
       </div>
 
-      {!canSubmit && (
+      {submitError && (
+        <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2', color: '#9F1239' }}>
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>{submitError}</span>
+        </div>
+      )}
+
+      {!canSubmit && !submitError && (
         <div className="rounded-xl p-3.5 text-xs" style={{ backgroundColor: '#FFF1F2',  color: '#9F1239' }}>
           Please select the date signed and upload your e-signature before submitting.
         </div>
@@ -145,7 +172,7 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, 
         style={canSubmit
           ? { backgroundColor: T.navy, color: '#fff', cursor: 'pointer' }
           : { backgroundColor: T.locked, color: T.gray, cursor: 'not-allowed' }}>
-        Submit Authorization Form
+        {submitting ? 'Submitting...' : 'Submit Authorization Form'}
       </button>
 
       {isCurrent && (
