@@ -15,14 +15,21 @@ type ApplicationWithRelations = {
   date_applied?: string | Date;
   updated_at?: string | Date;
   job_postings?: { title?: string; employment_type?: string | null } | null;
-  applicant_pds?: { resume_url?: string } | null;
+  resume_file_name?: string | null;
+  resume_file_size_label?: string | null;
+  cover_letter_file_name?: string | null;
+  cover_letter_file_size_label?: string | null;
 };
+
+type DocType = 'resume' | 'cover-letter';
 
 export default function ApplicationPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [application, setApplication] = useState<ApplicationWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openingDoc, setOpeningDoc] = useState<DocType | null>(null);
+  const [docError, setDocError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -38,6 +45,27 @@ export default function ApplicationPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [session]);
+
+  async function handleViewDocument(type: DocType) {
+    if (!application?.id || !session?.user?.email) return;
+    setDocError(null);
+    setOpeningDoc(type);
+    try {
+      const res = await fetch(
+        `/api/applications/${application.id}/document?type=${type}&email=${encodeURIComponent(
+          session.user.email
+        )}`
+      );
+      if (!res.ok) throw new Error('Failed to get file link');
+      const data = await res.json();
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error(err);
+      setDocError('Hindi ma-open ang file. Subukan ulit.');
+    } finally {
+      setOpeningDoc(null);
+    }
+  }
 
   if (status === 'loading' || loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -61,6 +89,21 @@ export default function ApplicationPage() {
     );
   }
 
+  const documents: { type: DocType; label: string; name?: string | null; sizeLabel?: string | null }[] = [
+    {
+      type: 'resume',
+      label: 'Resume',
+      name: application.resume_file_name,
+      sizeLabel: application.resume_file_size_label,
+    },
+    {
+      type: 'cover-letter',
+      label: 'Cover Letter',
+      name: application.cover_letter_file_name,
+      sizeLabel: application.cover_letter_file_size_label,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8f1fc_0%,_#f8fafc_55%)] py-8 px-4">
       <div className="max-w-2xl mx-auto">
@@ -69,7 +112,7 @@ export default function ApplicationPage() {
         </Link>
 
         <div className="bg-white rounded-2xl shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden mt-2 animate-fade-slide-up">
-          <div className="bg-gradient-to-r from-[#00AEEF] to-[#1B3A5C] px-8 py-6 text-white">
+         <div className="bg-[#1B3A5C] px-8 py-6 text-white">
             <h1 className="text-2xl font-bold">Your Application</h1>
           </div>
 
@@ -118,8 +161,72 @@ export default function ApplicationPage() {
               </div>
             </div>
 
+            <hr className="border-gray-100" />
+
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
+              <div className="space-y-2">
+                {documents.map((doc) => {
+                  const hasFile = !!doc.name;
+                  const isLoading = openingDoc === doc.type;
+                  return (
+                    <div
+                      key={doc.type}
+                      className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <svg
+                          className="w-5 h-5 text-gray-400 shrink-0"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                          />
+                        </svg>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">
+                            {doc.label}: {doc.name || 'N/A'}
+                          </p>
+                          <p className="text-xs text-gray-500">{doc.sizeLabel || 'N/A'}</p>
+                        </div>
+                      </div>
+                      {hasFile ? (
+                        <button
+                          onClick={() => handleViewDocument(doc.type)}
+                          disabled={isLoading}
+                          className="shrink-0 text-sm font-medium text-[#00AEEF] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? 'Opening...' : 'View'}
+                        </button>
+                      ) : (
+                        <span className="shrink-0 text-sm text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {docError && <p className="text-sm text-red-600 mt-2">{docError}</p>}
+            </div>
+
             <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-xl p-4 mt-6">
-              <span className="text-blue-500 mt-0.5">&#8505;&#65039;</span>
+              <svg
+                className="w-5 h-5 text-blue-500 mt-0.5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+                />
+              </svg>
               <p className="text-sm text-blue-800">
                 <strong>Note:</strong> You cannot edit your application after submission. If you need to make changes, please contact HR.
               </p>

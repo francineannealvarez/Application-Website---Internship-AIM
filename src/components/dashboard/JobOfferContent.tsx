@@ -3,18 +3,31 @@
 import { useState } from 'react';
 import { User, Calendar, Clock, Banknote, Gift, Check, X } from 'lucide-react';
 
+function formatOfferDate(d?: string | Date | null): string {
+  if (!d) return 'To be confirmed by HR';
+  const date = typeof d === 'string' ? new Date(d + (d.length === 10 ? 'T00:00:00' : '')) : d;
+  if (isNaN(date.getTime())) return 'To be confirmed by HR';
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
 export default function JobOfferContent({
   isCurrent,
   applicantName,
   applicationId,
   onAccept,
   onDecline,
+  dateOffered,
+  startDate,
+  salaryOffered,
 }: {
   isCurrent: boolean;
   applicantName: string;
   applicationId: string | null;
   onAccept: () => void;
   onDecline: (reason: string) => void;
+  dateOffered?: string | Date | null;
+  startDate?: string | Date | null;
+  salaryOffered?: string | null;
 }) {
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
@@ -102,19 +115,19 @@ export default function JobOfferContent({
         <div className="flex items-center gap-2.5 text-sm">
           <Calendar className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
           <span style={{ color: '#0B2A4A' }}>
-            <span className="font-semibold">Date Offered:</span> July 8, 2026
+            <span className="font-semibold">Date Offered:</span> {formatOfferDate(dateOffered)}
           </span>
         </div>
         <div className="flex items-center gap-2.5 text-sm">
           <Clock className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
           <span style={{ color: '#0B2A4A' }}>
-            <span className="font-semibold">Start Date:</span> July 27, 2026
+            <span className="font-semibold">Start Date:</span> {formatOfferDate(startDate)}
           </span>
         </div>
         <div className="flex items-center gap-2.5 text-sm">
           <Banknote className="w-4 h-4 shrink-0" style={{ color: '#12B6D6' }} />
           <span style={{ color: '#0B2A4A' }}>
-            <span className="font-semibold">Salary Offered:</span> PHP 60,000 - 75,000 / month
+            <span className="font-semibold">Salary Offered:</span> {salaryOffered || 'To be confirmed by HR'}
           </span>
         </div>
       </div>
@@ -163,7 +176,7 @@ export default function JobOfferContent({
       {isCurrent && showDeclineForm && (
         <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: '#FEF2F2' }}>
           <p className="text-sm font-semibold text-red-800">
-            Please tell us why you're declining this offer:
+            Please tell us why you&apos;re declining this offer:
           </p>
           <textarea
             value={declineReason}

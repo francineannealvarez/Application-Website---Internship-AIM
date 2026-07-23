@@ -696,6 +696,11 @@ export default function HomePage() {
               <h2 className="text-2xl md:text-4xl font-bold tracking-tight" style={{ color: '#0B2A4A' }}>
                 Open Positions
               </h2>
+              {!jobsLoading && (
+                <p className="text-sm mt-1" style={{ color: '#6B7A8D' }}>
+                  {jobs.length} open position{jobs.length !== 1 ? 's' : ''} available
+                </p>
+              )}
             </div>
             {jobs.length > 3 && (
               <button

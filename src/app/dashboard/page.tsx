@@ -24,6 +24,16 @@ function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+function validateFileSize(f: File): string | null {
+  if (f.size > MAX_FILE_SIZE_BYTES) {
+    return `File is too large. Max file size is ${MAX_FILE_SIZE_MB}MB.`;
+  }
+  return null;
+}
+
 type DocStatus = 'Submitted' | 'Pending';
 
 type InterviewSchedule = {
@@ -47,17 +57,44 @@ type RealApplicationRecord = {
   final_interview_schedule?: InterviewSchedule;
   interview_status?: string | null;
   employment_verification_status?: string | null;
+  job_offer_response?: string | null;
+  date_offered?: string | Date | null;
+  start_date?: string | Date | null;
+  salary_offered?: string | null;
+  onboarding_address?: string | null;
+  onboarding_what_to_bring?: string | null;
 };
 
 /**
  * `interview_status` DB values: NULL, 'Passed', 'Failed', 'Discontinued'.
  * Note: this column has no "in review" value - while it's NULL, the
  * applicant is just waiting on HR with no verdict yet.
+ *
+ * Prefers the dedicated column when it's actually set, but falls back to
+ * the same stage-position technique used for Final Interview and
+ * Background Check: if HR advances the overall `stage` straight past
+ * "Initial Interview" without ever writing a value to this column
+ * (e.g. moving stage directly via SQL/Table Editor with no HR panel to
+ * enforce the pairing), the applicant would otherwise be stuck here
+ * forever with no "Continue" button ever appearing.
  */
-function normalizeInterviewStatus(raw?: string | null): 'passed' | 'failed' | 'discontinued' | null {
+function normalizeInterviewStatus(
+  raw: string | null | undefined,
+  stage: string,
+  appStatus: string
+): 'passed' | 'failed' | 'discontinued' | null {
   if (raw === 'Passed') return 'passed';
   if (raw === 'Failed') return 'failed';
   if (raw === 'Discontinued') return 'discontinued';
+
+  const checkpointIdx = DB_STAGE_ORDER.indexOf('Initial Interview');
+  const currentIdx = DB_STAGE_ORDER.indexOf(stage);
+  if (currentIdx === -1) return null;
+  if (currentIdx > checkpointIdx) return 'passed';
+  if (currentIdx === checkpointIdx) {
+    if (appStatus === 'failed') return 'failed';
+    if (appStatus === 'withdrawn') return 'discontinued';
+  }
   return null;
 }
 
@@ -66,6 +103,17 @@ function normalizeInterviewStatus(raw?: string | null): 'passed' | 'failed' | 'd
  */
 function normalizeEvStatus(raw?: string | null): 'reviewing' | 'passed' | 'failed' | null {
   if (raw === 'On Progress') return 'reviewing';
+  if (raw === 'Passed') return 'passed';
+  if (raw === 'Failed') return 'failed';
+  return null;
+}
+
+/**
+ * `applicant_sra.status` DB values: 'Submitted' (naghihintay pa ng HR
+ * verdict), 'Passed', 'Failed'. Walang record = wala pang isinusumite.
+ */
+function normalizeSraStatus(raw?: string | null): 'reviewing' | 'passed' | 'failed' | null {
+  if (raw === 'Submitted') return 'reviewing';
   if (raw === 'Passed') return 'passed';
   if (raw === 'Failed') return 'failed';
   return null;
@@ -103,6 +151,32 @@ function normalizeFinalInterviewStatus(
     if (appStatus === 'withdrawn') return 'discontinued';
   }
   return null;
+}
+
+/**
+ * Background Check has a dedicated `employment_verification_status`
+ * column, but in practice HR's panel doesn't always set it - sometimes
+ * it just advances the overall `stage` straight past "Employment
+ * Verification" without ever writing 'Passed' to that column. So this
+ * prefers the dedicated column when it's actually been set, and falls
+ * back to the same stage-position technique used for Final Interview
+ * (which has no dedicated column at all) so a real HR confirmation is
+ * still required either way before the applicant can proceed.
+ */
+function normalizeBackgroundCheckStatus(
+  stage: string,
+  evStatusRaw: string | null | undefined,
+  appStatus: string
+): 'reviewing' | 'passed' | 'failed' | null {
+  const ev = normalizeEvStatus(evStatusRaw);
+  if (ev === 'passed' || ev === 'failed') return ev;
+
+  const checkpointIdx = DB_STAGE_ORDER.indexOf('Employment Verification');
+  const currentIdx = DB_STAGE_ORDER.indexOf(stage);
+  if (currentIdx === -1) return ev;
+  if (currentIdx > checkpointIdx) return 'passed';
+  if (currentIdx === checkpointIdx && appStatus === 'failed') return 'failed';
+  return ev;
 }
 
 const STAGE_LABELS = ['Submitted', 'Under Review', 'Result'];
@@ -313,6 +387,83 @@ function computeHiringStepIndex(
   if (!key) return 0;
   const idx = steps.findIndex((s) => s.key === key);
   return idx === -1 ? 0 : idx;
+}
+
+/**
+ * `stage` (above) only moves when HR reviews and manually advances it, and
+ * several applicant-driven sub-steps (Initial Interview's "Continue" click,
+ * Personal Data Sheet, SRA, Assessment, Final Interview's "Continue" click,
+ * Background Check, Job Offer response, Requirements) sit *inside* a single
+ * `stage` value with no DB column of their own for "have they clicked
+ * Continue / submitted this yet". Previously this was tracked with a
+ * client-side-only counter that reset to 0 on every refresh - so a refresh
+ * could bounce the applicant back to a step they'd already finished.
+ *
+ * This derives real progress from actual submitted records instead: if a
+ * later step already has real evidence of submission, every step before it
+ * must also be done (Personal Data Sheet is only reachable after Initial
+ * Interview's "Continue" was clicked, etc.) - so we scan forward and take
+ * one past the highest step with real evidence.
+ */
+function computeEvidenceBasedIndex(
+  steps: { key: StepKey }[],
+  evidence: {
+    pdsSubmitted: boolean;
+    sraSubmitted: boolean;
+    assessmentSubmitted: boolean;
+    backgroundSubmitted: boolean;
+    jobOfferResponded: boolean;
+    requirementsAllSubmitted: boolean;
+  }
+): number {
+  const doneByKey: Partial<Record<StepKey, boolean>> = {
+    pds: evidence.pdsSubmitted,
+    sri: evidence.sraSubmitted,
+    assessment: evidence.assessmentSubmitted,
+    background: evidence.backgroundSubmitted,
+    joboffer: evidence.jobOfferResponded,
+    requirements: evidence.requirementsAllSubmitted,
+  };
+  let highestDoneIdx = -1;
+  steps.forEach((s, idx) => {
+    if (doneByKey[s.key]) highestDoneIdx = idx;
+  });
+  return highestDoneIdx + 1;
+}
+
+/**
+ * Some steps (SRA, Background Check, Job Offer, Requirements) sit *inside*
+ * a single coarse `stage` checkpoint with no DB value of their own - so
+ * when HR advances `stage` directly from one checkpoint straight to the
+ * next (e.g. "Employment Verification" -> "Job Offer", or "Job Offer" ->
+ * "On Boarding"), `computeHiringStepIndex` above can leapfrog past these
+ * sub-steps by proximity alone, even if the applicant never actually
+ * finished them (SRA never submitted, background check never actually
+ * submitted, job offer never responded to).
+ *
+ * `department` (Final Interview) is a special case: it has no DB evidence
+ * column of its own at all, so its gate below is driven by a client-side
+ * "did the applicant actually click Continue after seeing the passed
+ * screen" flag instead of a DB flag - see `continuedGateSteps` in the
+ * main component.
+ *
+ * This caps the final completed-step index so it can never pass a gated
+ * step unless that step's real evidence flag is explicitly true. `gates`
+ * only needs to include the steps that require this extra check; any step
+ * key not present (or explicitly `true`) is left uncapped.
+ */
+function capForGatedSteps(
+  rawIndex: number,
+  steps: { key: StepKey }[],
+  gates: Partial<Record<StepKey, boolean>>
+): number {
+  let capped = rawIndex;
+  steps.forEach((s, idx) => {
+    if (gates[s.key] === false) {
+      capped = Math.min(capped, idx);
+    }
+  });
+  return capped;
 }
 
 const STEP_DETAILS = [
@@ -589,62 +740,78 @@ function GuideAccordion({ guide }: { guide: (typeof GUIDES)[number] }) {
 
 type ReqRecord = { status: DocStatus; fileName: string | null; filePath: string | null };
 
-function RequirementRow({ label, note, Icon, record, uploading, onUpload }: {
+function RequirementRow({ label, note, Icon, record, uploading, onUpload, onView, viewing }: {
   label: string; note: string; Icon: React.ElementType; record: ReqRecord | undefined;
-  uploading: boolean; onUpload: (file: File) => void;
+  uploading: boolean; onUpload: (file: File) => void; onView: () => void; viewing: boolean;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const [sizeError, setSizeError] = useState<string>('');
   const isSubmitted = record?.status === 'Submitted' && Boolean(record.fileName);
 
+  const handleFileChange = (f: File | undefined) => {
+    if (!f) return;
+    const err = validateFileSize(f);
+    if (err) {
+      setSizeError(err);
+      return;
+    }
+    setSizeError('');
+    onUpload(f);
+  };
+
   return (
-    <div className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#E5E9EC] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)' }}><Icon className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-[#0B2A4A]">{label}</div>
-        <div className="text-xs mt-0.5 truncate" style={{ color: '#6B7A8D' }}>{isSubmitted ? record!.fileName : note}</div>
-      </div>
-      <input ref={inputRef} type="file" accept=".pdf,image/*" className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
-      {isSubmitted ? (
-        <div className="flex items-center gap-1.5 shrink-0">
-          {record!.filePath && (
-            <a href={record!.filePath} target="_blank" rel="noreferrer"
-              className="text-xs font-semibold px-2.5 py-1 rounded-full hover:underline" style={{ color: '#12B6D6' }}>
-              View
-            </a>
-          )}
-          <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700 shrink-0">
-            <Check className="w-3 h-3" /> Submitted
-          </span>
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
-            className="text-xs font-medium px-2 py-1 rounded-full hover:bg-black/5 shrink-0" style={{ color: '#9BAAB8' }}>
-            Replace
-          </button>
+    <div className="p-3.5 bg-white rounded-xl border border-[#E5E9EC] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #EEF9FB 0%, #D6F4FA 100%)' }}><Icon className="w-4 h-4" style={{ color: '#12B6D6' }} /></div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-[#0B2A4A]">{label}</div>
+          <div className="text-xs mt-0.5 truncate" style={{ color: '#6B7A8D' }}>{isSubmitted ? record!.fileName : note}</div>
         </div>
-      ) : (
-        <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
-          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-[#EEF9FB] hover:text-[#12B6D6] transition-colors shrink-0">
-          <Clock className="w-3 h-3" /> {uploading ? 'Uploading...' : 'Upload'}
-        </button>
-      )}
+        <input ref={inputRef} type="file" accept=".pdf,image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; handleFileChange(f); }} />
+        {isSubmitted ? (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {record!.filePath && (
+              <button type="button" onClick={onView} disabled={viewing}
+                className="text-xs font-semibold px-2.5 py-1 rounded-full hover:underline disabled:opacity-50" style={{ color: '#12B6D6' }}>
+                {viewing ? 'Opening...' : 'View'}
+              </button>
+            )}
+            <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700 shrink-0">
+              <Check className="w-3 h-3" /> Submitted
+            </span>
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
+              className="text-xs font-medium px-2 py-1 rounded-full hover:bg-black/5 shrink-0" style={{ color: '#9BAAB8' }}>
+              Replace
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-[#EEF9FB] hover:text-[#12B6D6] transition-colors shrink-0">
+            <Clock className="w-3 h-3" /> {uploading ? 'Uploading...' : 'Upload'}
+          </button>
+        )}
+      </div>
+      {sizeError && <p className="text-xs mt-2" style={{ color: '#DC2626' }}>{sizeError}</p>}
     </div>
   );
 }
 
-function RequirementsContent({ requirementsData, uploadingKey, onDocUpload, isCurrent }: {
-  requirementsData: Record<string, ReqRecord>; uploadingKey: string | null; onDocUpload: (key: string, file: File) => void; isCurrent: boolean;
+function RequirementsContent({ requirementsData, uploadingKey, onDocUpload, onDocView, viewingKey, isCurrent }: {
+  requirementsData: Record<string, ReqRecord>; uploadingKey: string | null; onDocUpload: (key: string, file: File) => void; onDocView: (key: string) => void; viewingKey: string | null; isCurrent: boolean;
 }) {
   return (
     <div className="pt-3 space-y-4">
       <div>
         <h4 className="font-semibold text-[#0B2A4A] text-sm">Document Requirements</h4>
-        <p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Please prepare and submit the following before your scheduled deadline. Upload a clear photo or PDF scan of each document.</p>
+        <p className="text-xs mt-0.5" style={{ color: '#6B7A8D' }}>Please prepare and submit the following before your scheduled deadline. Upload a clear photo or PDF scan of each document (max 10MB per file).</p>
       </div>
 
       <div className="space-y-2">
         {REQUIREMENTS_MAIN.map((r) => (
           <RequirementRow key={r.key} label={r.label} note={r.note} Icon={r.Icon}
-            record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)} />
+            record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)}
+            onView={() => onDocView(r.key)} viewing={viewingKey === r.key} />
         ))}
       </div>
 
@@ -652,7 +819,8 @@ function RequirementsContent({ requirementsData, uploadingKey, onDocUpload, isCu
         <div className="space-y-2">
           {REQUIREMENTS_PREV_EMPLOYER.map((r) => (
             <RequirementRow key={r.key} label={r.label} note={r.note} Icon={r.Icon}
-              record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)} />
+              record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)}
+              onView={() => onDocView(r.key)} viewing={viewingKey === r.key} />
           ))}
         </div>
       </ReqCollapsible>
@@ -661,7 +829,8 @@ function RequirementsContent({ requirementsData, uploadingKey, onDocUpload, isCu
         <div className="space-y-2">
           {REQUIREMENTS_BDO.map((r) => (
             <RequirementRow key={r.key} label={r.label} note={r.note} Icon={r.Icon}
-              record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)} />
+              record={requirementsData[r.key]} uploading={uploadingKey === r.key} onUpload={(file) => onDocUpload(r.key, file)}
+              onView={() => onDocView(r.key)} viewing={viewingKey === r.key} />
           ))}
         </div>
       </ReqCollapsible>
@@ -675,7 +844,7 @@ function RequirementsContent({ requirementsData, uploadingKey, onDocUpload, isCu
 
       <div className="rounded-xl px-5 py-5 space-y-4" style={{ backgroundColor: '#EEF9FB' }}>
         <div className="flex items-start gap-3"><Calendar className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Deadline</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">August 5, 2025</div></div></div>
-        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">Arvin International Marketing Inc. — 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City</div></div></div>
+        <div className="flex items-start gap-3"><MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Submission Venue</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">Arvin International Marketing Inc. - 18th Floor, Y Tower Building, Corner Coral Way St., Macapagal Ave., Brgy. 76, Pasay City</div></div></div>
         <div className="flex items-start gap-3"><Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#12B6D6' }} /><div><div className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#12B6D6' }}>Office Hours</div><div className="text-sm font-bold text-[#0B2A4A] mt-0.5">8:00 AM - 6:00 PM, Monday to Friday</div></div></div>
       </div>
 
@@ -688,7 +857,7 @@ function RequirementsContent({ requirementsData, uploadingKey, onDocUpload, isCu
   );
 }
 
-function HiringProcessCard({ steps, completedSteps, requirementsData, uploadingKey, onDocUpload, onStepSubmitted, onAdvance, applicantName, onWithdraw, applicationId, positionTitle, dateApplied, initialInterviewSchedule, finalInterviewSchedule, initialInterviewStatus, backgroundCheckStatus, finalInterviewStatus }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; requirementsData: Record<string, ReqRecord>; uploadingKey: string | null; onDocUpload: (key: string, file: File) => void; onStepSubmitted: () => void; onAdvance: () => void; applicantName: string; onWithdraw: (reason: string) => void; applicationId: string | null; positionTitle: string; dateApplied?: string | Date | null; initialInterviewSchedule?: InterviewSchedule; finalInterviewSchedule?: InterviewSchedule; initialInterviewStatus?: ReturnType<typeof normalizeInterviewStatus>; backgroundCheckStatus?: ReturnType<typeof normalizeEvStatus>; finalInterviewStatus?: ReturnType<typeof normalizeFinalInterviewStatus>; }) {
+function HiringProcessCard({ steps, completedSteps, requirementsData, uploadingKey, onDocUpload, onDocView, viewingKey, onStepSubmitted, onAdvance, applicantName, onWithdraw, applicationId, positionTitle, dateApplied, dateOffered, startDate, salaryOffered, onboardingAddress, onboardingWhatToBring, initialInterviewSchedule, finalInterviewSchedule, initialInterviewStatus, backgroundCheckStatus, finalInterviewStatus, sraStatus }: { steps: ReturnType<typeof buildHiringSteps>; completedSteps: number; requirementsData: Record<string, ReqRecord>; uploadingKey: string | null; onDocUpload: (key: string, file: File) => void; onDocView: (key: string) => void; viewingKey: string | null; onStepSubmitted: () => void; onAdvance: (key?: StepKey) => void; applicantName: string; onWithdraw: (reason: string) => void; applicationId: string | null; positionTitle: string; dateApplied?: string | Date | null; dateOffered?: string | Date | null; startDate?: string | Date | null; salaryOffered?: string | null; onboardingAddress?: string | null; onboardingWhatToBring?: string | null; initialInterviewSchedule?: InterviewSchedule; finalInterviewSchedule?: InterviewSchedule; initialInterviewStatus?: ReturnType<typeof normalizeInterviewStatus>; backgroundCheckStatus?: ReturnType<typeof normalizeEvStatus>; finalInterviewStatus?: ReturnType<typeof normalizeFinalInterviewStatus>; sraStatus?: ReturnType<typeof normalizeSraStatus>; }) {
   const totalSteps = steps.length;
   const circleState = (idx: number): 'completed' | 'active' | 'locked' => { if (idx < completedSteps) return 'completed'; if (idx === completedSteps) return 'active'; return 'locked'; };
   return (
@@ -741,33 +910,33 @@ function HiringProcessCard({ steps, completedSteps, requirementsData, uploadingK
               </div>
               <div className="px-4 pb-4 border-t border-[#E5E9EC]/80 animate-fade-slide-up">
                 {step.key === 'initial' ? (
-                  <StepGate stepLabel="Initial Interview" isCurrent={isCurrent} status={initialInterviewStatus} onSubmitted={onStepSubmitted} onContinue={onAdvance} onWithdraw={onWithdraw}>
+                  <StepGate stepLabel="Initial Interview" isCurrent={isCurrent} status={initialInterviewStatus} onSubmitted={onStepSubmitted} onContinue={() => onAdvance('initial')} onWithdraw={onWithdraw}>
                     {() => <StepDetailContent stepIdx={0} isCurrent={isCurrent} schedule={initialInterviewSchedule} />}
                   </StepGate>
                 ) : step.key === 'pds' ? (
                   <PersonalDataSheetContent isCurrent={isCurrent} onSubmit={onStepSubmitted} applicationId={applicationId} positionTitle={positionTitle} applicationDate={dateApplied} />
                 ) : step.key === 'sri' ? (
-                  <StepGate stepLabel="SRA (Verbal Test)" isCurrent={isCurrent} status={null} onSubmitted={onStepSubmitted} onWithdraw={onWithdraw}>
+                  <StepGate stepLabel="SRA (Verbal Test)" isCurrent={isCurrent} status={sraStatus} onSubmitted={onStepSubmitted} onContinue={() => onAdvance('sri')} onWithdraw={onWithdraw}>
                     {(markSubmitted) => <SRAContent isCurrent={isCurrent} onSubmit={markSubmitted} applicationId={applicationId} />}
                   </StepGate>
                 ) : step.key === 'assessment' ? (
                   <AssessmentContent isCurrent={isCurrent} onSubmit={onStepSubmitted} applicationId={applicationId} />
                 ) : step.key === 'background' ? (
-                  <StepGate stepLabel="Character & Background Check" isCurrent={isCurrent} status={backgroundCheckStatus} onSubmitted={onStepSubmitted} onContinue={onAdvance} onWithdraw={onWithdraw}>
+                  <StepGate stepLabel="Character & Background Check" isCurrent={isCurrent} status={backgroundCheckStatus} onSubmitted={onStepSubmitted} onContinue={() => onAdvance('background')} onWithdraw={onWithdraw}>
                     {(markSubmitted) => <BackgroundCheckContent isCurrent={isCurrent} onSubmit={markSubmitted} fullName={applicantName} positionTitle={positionTitle} applicationId={applicationId} />}
                   </StepGate>
                 ) : step.key === 'department' ? (
-                  <StepGate stepLabel="Final Interview" isCurrent={isCurrent} status={finalInterviewStatus} onSubmitted={onStepSubmitted} onContinue={onAdvance} onWithdraw={onWithdraw}>
+                  <StepGate stepLabel="Final Interview" isCurrent={isCurrent} status={finalInterviewStatus} onSubmitted={onStepSubmitted} onContinue={() => onAdvance('department')} onWithdraw={onWithdraw}>
                     {() => <StepDetailContent stepIdx={1} isCurrent={isCurrent} schedule={finalInterviewSchedule} />}
                   </StepGate>
                 ) : step.key === 'joboffer' ? (
-                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} applicationId={applicationId} onAccept={onStepSubmitted} onDecline={onWithdraw} />
+                  <JobOfferContent isCurrent={isCurrent} applicantName={applicantName} applicationId={applicationId} onAccept={onStepSubmitted} onDecline={onWithdraw} dateOffered={dateOffered} startDate={startDate} salaryOffered={salaryOffered} />
                 ) : step.key === 'requirements' ? (
                   <StepGate stepLabel="Requirements Submission" isCurrent={isCurrent} status={null} onSubmitted={onStepSubmitted} onWithdraw={onWithdraw}>
-                    {() => <RequirementsContent requirementsData={requirementsData} uploadingKey={uploadingKey} onDocUpload={onDocUpload} isCurrent={isCurrent} />}
+                    {() => <RequirementsContent requirementsData={requirementsData} uploadingKey={uploadingKey} onDocUpload={onDocUpload} onDocView={onDocView} viewingKey={viewingKey} isCurrent={isCurrent} />}
                   </StepGate>
                 ) : (
-                  <OnboardingContent isCurrent={isCurrent} />
+                  <OnboardingContent isCurrent={isCurrent} applicantName={applicantName} positionTitle={positionTitle} startDate={startDate} onboardingAddress={onboardingAddress} onboardingWhatToBring={onboardingWhatToBring} />
                 )}
               </div>
             </div>
@@ -844,14 +1013,6 @@ export default function ApplicantDashboard() {
     fetchApplication();
   }, [fetchApplication]);
 
-  // Poll every 15 seconds so the applicant sees HR-side stage updates
-  // without needing to manually refresh the page.
-  useEffect(() => {
-    if (!session?.user?.email) return;
-    const interval = setInterval(fetchApplication, 15000);
-    return () => clearInterval(interval);
-  }, [session, fetchApplication]);
-
   const positionTitle = application?.job_postings?.title || '';
   const includeSri = positionTitle === 'Clerk' || positionTitle === 'Checker';
   const steps = buildHiringSteps(includeSri);
@@ -861,34 +1022,13 @@ export default function ApplicantDashboard() {
   );
 
   const [showHiringProcess, setShowHiringProcess] = useState(false);
-  const hiringCompletedSteps = computeHiringStepIndex(
-    application?.stage || '',
-    application?.date_hired ?? null,
-    steps
-  );
-
-  // DB `stage` only moves at HR-driven checkpoints, so sub-steps that
-  // happen *within* a single stage (submitting the PDS/SRA/Assessment,
-  // or clicking Continue after a Passed verdict on Initial Interview /
-  // Final Interview / Background Check) need their own forward-only
-  // counter. This is always kept at least as high as the DB-derived
-  // index, and never moves backward, and resets whenever we switch to a
-  // different application record.
-  const [advancedIdx, setAdvancedIdx] = useState(0);
-  useEffect(() => {
-    setAdvancedIdx((prev) => Math.max(prev, hiringCompletedSteps));
-  }, [hiringCompletedSteps]);
-  useEffect(() => {
-    setAdvancedIdx(0);
-  }, [application?.id]);
-  const effectiveCompletedSteps = Math.max(hiringCompletedSteps, advancedIdx);
-  const advanceLocally = () => setAdvancedIdx((prev) => Math.min(prev + 1, steps.length));
 
   // Real requirements data, fetched from `applicant_requirements`. Keyed by
   // the stable `document` slug used both here and in the DB, instead of
   // the old local-only base64 simulation.
   const [requirementsData, setRequirementsData] = useState<Record<string, ReqRecord>>({});
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [viewingKey, setViewingKey] = useState<string | null>(null);
 
   const fetchRequirements = React.useCallback(() => {
     if (!application?.id) return;
@@ -897,8 +1037,11 @@ export default function ApplicantDashboard() {
       .then((records: { document: string; status: string; file_name: string | null; file_path: string | null }[]) => {
         const map: Record<string, ReqRecord> = {};
         for (const r of records) {
+          // May file na naka-attach = submitted na siya sa POV ng applicant.
+          // "Pending Review" ay HR-side label lang (hindi pa na-rereview),
+          // hindi ibig sabihin wala pang na-upload.
           map[r.document] = {
-            status: r.status === 'Submitted' ? 'Submitted' : 'Pending',
+            status: r.status && r.status !== 'Not Submitted' ? 'Submitted' : 'Pending',
             fileName: r.file_name,
             filePath: r.file_path,
           };
@@ -911,6 +1054,172 @@ export default function ApplicantDashboard() {
   useEffect(() => {
     fetchRequirements();
   }, [fetchRequirements]);
+
+  // Real evidence of sub-steps that have no DB `stage` value of their own
+  // (Personal Data Sheet, SRA, Assessment, Background Check authorization
+  // form). Fetched independently of `application` so a refresh can
+  // recompute exactly where the applicant really left off, instead of
+  // relying on a client-side-only counter that resets on every reload.
+  const [evidence, setEvidence] = useState({
+    pdsSubmitted: false,
+    sraSubmitted: false,
+    sraStatusRaw: null as string | null,
+    assessmentSubmitted: false,
+    backgroundSubmitted: false,
+  });
+
+  const fetchEvidence = React.useCallback(() => {
+    if (!application?.id) return;
+    const appId = application.id;
+    Promise.all([
+      fetch(`/api/pds?application_id=${encodeURIComponent(appId)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`/api/sra?application_id=${encodeURIComponent(appId)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`/api/assessment?application_id=${encodeURIComponent(appId)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`/api/background-check?application_id=${encodeURIComponent(appId)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([pds, sra, assessment, background]) => {
+      setEvidence({
+        pdsSubmitted: Boolean(pds?.submitted_at),
+        // May record na (Submitted/Passed/Failed) = na-submit na siya.
+        // Dating '=== Submitted' lang ang check, kaya pag na-verdict na
+        // ni HR (naging 'Passed'), naging false ito at bumabalik ang
+        // progress - ayan yung "balik sa SRA pagka-refresh" na bug.
+        sraSubmitted: Boolean(sra?.status),
+        sraStatusRaw: sra?.status ?? null,
+        assessmentSubmitted: Boolean(assessment?.submitted_at),
+        backgroundSubmitted: background?.status === 'Submitted',
+      });
+    });
+  }, [application?.id]);
+
+  useEffect(() => {
+    fetchEvidence();
+  }, [fetchEvidence]);
+
+  // Poll every 15 seconds so the applicant sees HR-side stage updates
+  // without needing to manually refresh the page.
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    const interval = setInterval(() => {
+      fetchApplication();
+      fetchEvidence();
+      fetchRequirements();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [session, fetchApplication, fetchEvidence, fetchRequirements]);
+
+  const requirementsAllSubmitted = REQUIREMENTS_MAIN.every((r) => requirementsData[r.key]?.status === 'Submitted');
+  // Ang Requirements dapat mag-move lang papuntang Onboarding kapag ni-move
+  // na ni HR ang stage - hindi dapat sapat na lang na na-upload na ang lahat
+  // ng files. HR ang dapat mag-move, hindi automatic.
+  const requirementsApproved = application?.stage === 'On Boarding' || Boolean(application?.date_hired);
+  const jobOfferResponded = Boolean(application?.job_offer_response);
+  // Computed once here so it can be reused both for the gating cap below
+  // and as the prop passed into HiringProcessCard, instead of calling
+  // normalizeEvStatus twice with the risk of the two calls drifting apart.
+  const backgroundCheckStatus = normalizeBackgroundCheckStatus(application?.stage || '', application?.employment_verification_status, application?.status || '');
+  const sraStatus = normalizeSraStatus(evidence.sraStatusRaw);
+
+  // Final Interview has no DB evidence column of its own (unlike SRA and
+  // Background Check, which now have their own real status values). The
+  // only correct signal that the applicant actually saw the "Congrats,
+  // you passed" screen and clicked Continue - instead of the coarse DB
+  // `stage` silently leapfrogging past this step the moment HR advances
+  // it - is this client-side flag. It resets on refresh, but the only
+  // consequence of that is the Congratulations screen being shown once
+  // more if they refresh in the narrow window before also submitting the
+  // Background Check form; no real progress is ever lost.
+  const [continuedGateSteps, setContinuedGateSteps] = useState<Set<StepKey>>(new Set());
+
+  // The real current-step index: the DB `stage` checkpoint (authoritative
+  // whenever HR moves it directly) combined with the evidence-based index
+  // derived from actual submitted records (self-heals sub-steps that have
+  // no `stage` value of their own). We always take whichever is further
+  // along.
+  const stageBasedIndex = computeHiringStepIndex(
+    application?.stage || '',
+    application?.date_hired ?? null,
+    steps
+  );
+  const evidenceBasedIndex = computeEvidenceBasedIndex(steps, {
+    pdsSubmitted: evidence.pdsSubmitted,
+    sraSubmitted: evidence.sraSubmitted,
+    assessmentSubmitted: evidence.assessmentSubmitted,
+    backgroundSubmitted: evidence.backgroundSubmitted,
+    jobOfferResponded,
+    requirementsAllSubmitted: requirementsApproved,
+  });
+  const hiringCompletedSteps = Math.max(stageBasedIndex, evidenceBasedIndex);
+
+  // Kept as a same-session responsiveness layer only: the moment a step is
+  // submitted, we bump this immediately so the UI doesn't wait on a
+  // refetch. `hiringCompletedSteps` above is now the source of truth that
+  // survives a refresh, so this no longer needs to "remember" anything by
+  // itself - it just can't ever be lower than the real computed index.
+  const [advancedIdx, setAdvancedIdx] = useState(0);
+  useEffect(() => {
+    setAdvancedIdx((prev) => Math.max(prev, hiringCompletedSteps));
+  }, [hiringCompletedSteps]);
+  useEffect(() => {
+    setAdvancedIdx(0);
+    setContinuedGateSteps(new Set());
+  }, [application?.id]);
+
+  // Final displayed index: takes the furthest-along raw index, then caps
+  // it so it can never skip past a step whose real gating evidence isn't
+  // true yet - even if the coarse DB `stage` (or a premature local bump)
+  // suggests otherwise. This is what fixes the "jumps straight from
+  // Background Check to Job Offer", "skips the Job Offer screen entirely
+  // and lands on Requirements", "SRA not actually required before
+  // Assessment", and "Final Interview never shows a Continue button, or
+  // sometimes jumps ahead without waiting for the applicant" bugs.
+  const effectiveCompletedSteps = capForGatedSteps(
+    Math.max(hiringCompletedSteps, advancedIdx),
+    steps,
+    {
+      // Initial Interview: parehong paraan ng Final Interview/Background
+      // Check - ang gate ay ang client-side "click Continue" flag, na
+      // lalabas lang kapag totoong "Passed" na ang derived status
+      // (normalizeInterviewStatus).
+      initial: continuedGateSteps.has('initial'),
+      // Personal Data Sheet: may sarili nang DB evidence column
+      // (submitted_at sa /api/pds), kaya direkta natin itong gagamitin -
+      // hindi dapat matalunan ito ng stage kahit diretso i-set ni HR
+      // (o via SQL) ang stage papunta sa Assessment nang hindi pa
+      // na-susumite ng applicant ang PDS.
+      pds: evidence.pdsSubmitted,
+      // Parehong dahilan sa SRA at background: ang HR panel ay
+      // in-a-advance lang ang `stage`, hindi laging tinatatak ang
+      // dedicated status column. Kaya "may na-submit na" (hindi
+      // kailangang "Passed") ang sapat na dahilan para hindi i-cap
+      // pababa - ang totoong dahilan ng cap ay para lang hindi
+      // makatalon papunta sa susunod na step BAGO pa man makapag-sumite
+      // ang applicant.
+      sri: evidence.sraSubmitted,
+      // Assessment: may sarili nang DB evidence column (submitted_at sa
+      // /api/assessment). Nakalimutan itong ilagay dati sa gates object -
+      // parehong panganib gaya ng PDS: kung diretso i-advance ni HR ang
+      // stage papunta sa Final Interview nang hindi pa na-susumite ng
+      // applicant ang Assessment, matatalon ito.
+      assessment: evidence.assessmentSubmitted,
+      // Final Interview and Background Check: parehong walang laging
+      // ginagamit na dedicated DB column mula sa HR panel, kaya ang
+      // parehong gate ay ang client-side "click Continue" flag, na
+      // lalabas lang kapag totoong "Passed" na ang derived status
+      // (normalizeFinalInterviewStatus / normalizeBackgroundCheckStatus).
+      department: continuedGateSteps.has('department'),
+      background: continuedGateSteps.has('background'),
+      joboffer: jobOfferResponded,
+      // Requirements: dapat gate rin ito sa totoong HR approval
+      // (requirementsApproved), hindi sa client-side "all files uploaded"
+      // flag - kaya hindi na ito automatic na tumatawid sa Onboarding.
+      requirements: requirementsApproved,
+    }
+  );
+  const advanceLocally = () => setAdvancedIdx((prev) => Math.min(prev + 1, steps.length));
+  const handleAdvance = (key?: StepKey) => {
+    if (key) setContinuedGateSteps((prev) => new Set(prev).add(key));
+    advanceLocally();
+  };
 
   const [modalOpen, setModalOpen] = useState(false);
   const [congratsOpen, setCongratsOpen] = useState(false);
@@ -965,14 +1274,36 @@ export default function ApplicantDashboard() {
     }
   };
 
+  // Requirement files now live in Supabase Storage (not a public URL), so
+  // viewing one means fetching a short-lived signed URL first, the same
+  // pattern used for the resume/cover letter viewer on /application.
+  const handleViewRequirement = async (key: string) => {
+    if (!application?.id || !session?.user?.email) return;
+    setViewingKey(key);
+    try {
+      const res = await fetch(
+        `/api/requirements/document?application_id=${encodeURIComponent(application.id)}&document=${encodeURIComponent(key)}&email=${encodeURIComponent(session.user.email)}`
+      );
+      if (!res.ok) throw new Error('Failed to get file link');
+      const body = await res.json();
+      window.open(body.url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setViewingKey(null);
+    }
+  };
+
   // Sub-step components (PDS, SRA, Assessment, Background Check, Job Offer,
   // Requirements) handle their own submission to the backend. We advance
   // the local counter immediately so the UI feels responsive, then
-  // re-fetch the application record so any DB-side stage change (made by
-  // HR or by that submission) is reflected as well.
+  // re-fetch the application record and the real per-step evidence so any
+  // DB-side change (made by HR or by that submission) is reflected too.
   const handleStepSubmitted = () => {
     advanceLocally();
     fetchApplication();
+    fetchEvidence();
+    fetchRequirements();
   };
 
   const handleLogout = () => {
@@ -1029,7 +1360,7 @@ export default function ApplicantDashboard() {
             <p className="text-sm" style={{ color: '#6B7A8D' }}>Thank you for your time and interest in Arvin International Marketing Inc. We hope to see your application again in the future.</p>
           </div>
         ) : showHiringProcess ? (
-          <HiringProcessCard key={effectiveCompletedSteps} steps={steps} completedSteps={effectiveCompletedSteps} requirementsData={requirementsData} uploadingKey={uploadingKey} onDocUpload={handleDocUpload} onStepSubmitted={handleStepSubmitted} onAdvance={advanceLocally} applicantName={name} onWithdraw={handleWithdraw} applicationId={application?.id ?? null} positionTitle={positionTitle} dateApplied={application?.date_applied ?? null} initialInterviewSchedule={application?.initial_interview_schedule ?? null} finalInterviewSchedule={application?.final_interview_schedule ?? null} initialInterviewStatus={normalizeInterviewStatus(application?.interview_status)} backgroundCheckStatus={normalizeEvStatus(application?.employment_verification_status)} finalInterviewStatus={normalizeFinalInterviewStatus(application?.stage || '', application?.status || '')} />
+          <HiringProcessCard key={effectiveCompletedSteps} steps={steps} completedSteps={effectiveCompletedSteps} requirementsData={requirementsData} uploadingKey={uploadingKey} onDocUpload={handleDocUpload} onDocView={handleViewRequirement} viewingKey={viewingKey} onStepSubmitted={handleStepSubmitted} onAdvance={handleAdvance} applicantName={name} onWithdraw={handleWithdraw} applicationId={application?.id ?? null} positionTitle={positionTitle} dateApplied={application?.date_applied ?? null} dateOffered={application?.date_offered ?? null} startDate={application?.start_date ?? null} salaryOffered={application?.salary_offered ?? null} onboardingAddress={application?.onboarding_address ?? null} onboardingWhatToBring={application?.onboarding_what_to_bring ?? null} initialInterviewSchedule={application?.initial_interview_schedule ?? null} finalInterviewSchedule={application?.final_interview_schedule ?? null} initialInterviewStatus={normalizeInterviewStatus(application?.interview_status, application?.stage || '', application?.status || '')} backgroundCheckStatus={backgroundCheckStatus} finalInterviewStatus={normalizeFinalInterviewStatus(application?.stage || '', application?.status || '')} sraStatus={sraStatus} />
         ) : (
           <ApplicationStatusCard stage={applicationStage} rejected={rejected} onContinue={() => setModalOpen(true)} />
         )}

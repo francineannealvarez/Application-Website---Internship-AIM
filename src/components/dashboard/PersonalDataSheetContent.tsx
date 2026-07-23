@@ -321,6 +321,46 @@ const emptyJob: JobRow = {
 };
 const emptyRef: RefRow = { name: '', occupation: '', telephone: '', address: '' };
 
+// Shape returned by GET /api/pds - a saved row, or null if nothing submitted yet.
+type SavedPds = {
+  last_name?: string | null; first_name?: string | null; middle_name?: string | null; nickname?: string | null;
+  present_address?: string | null; provincial_address?: string | null;
+  how_often_visit_province?: string | null; travel_time_minutes?: string | null;
+  residence_number?: string | null; cellphone?: string | null; email?: string | null;
+  religion?: string | null; desired_salary?: string | null;
+  date_of_birth?: string | null; place_of_birth?: string | null; nationality?: string | null;
+  sex?: string | null; age?: string | null; height?: string | null; weight?: string | null;
+  civil_status?: string | null; sss_number?: string | null; tin?: string | null;
+  pagibig_number?: string | null; philhealth_number?: string | null; health_issues?: string | null;
+  father_name?: string | null; father_address?: string | null; father_occupation?: string | null; father_age?: string | null; father_na?: boolean | null;
+  mother_name?: string | null; mother_address?: string | null; mother_occupation?: string | null; mother_age?: string | null; mother_na?: boolean | null;
+  spouse_name?: string | null; spouse_address?: string | null; spouse_occupation?: string | null; spouse_age?: string | null; spouse_na?: boolean | null;
+  siblings?: Person[] | null; siblings_na?: boolean | null;
+  children?: Child[] | null;
+  has_relative_in_company?: string | null; relatives?: Relative[] | null;
+  elementary?: EduRow | null; secondary?: EduRow | null; college?: EduRow | null; post_graduate?: EduRow | null; vocational?: EduRow | null;
+  why_took_course?: string | null;
+  licenses?: LicenseRow[] | null; licenses_na?: boolean | null;
+  gov_exams?: ExamRow[] | null; gov_exams_na?: boolean | null;
+  trainings?: SimpleRow[] | null; trainings_na?: boolean | null;
+  activities?: SimpleRow[] | null; activities_na?: boolean | null;
+  special_skills?: string | null;
+  employment_record?: JobRow[] | null;
+  character_references?: RefRow[] | null; character_references_na?: boolean | null;
+  emergency_name?: string | null; emergency_relationship?: string | null; emergency_telephone?: string | null; emergency_address?: string | null;
+  declarations?: Record<string, string> | null;
+  personality_profiling?: Record<string, unknown> | null;
+  work_preferences?: Record<string, unknown> | null;
+  certify_truth_correctness?: boolean | null;
+  signature_name?: string | null;
+  photo_file_name?: string | null;
+  signature_file_name?: string | null;
+  location_sketch_file_name?: string | null;
+  photo_signed_url?: string | null;
+  signature_signed_url?: string | null;
+  sketch_signed_url?: string | null;
+} | null;
+
 /* ─────────────────────────────────────────────────────────────
    Main component
    ───────────────────────────────────────────────────────────── */
@@ -329,6 +369,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>('basic');
+  const [loadingSaved, setLoadingSaved] = useState(true);
 
   // ── Basic / contact (deduped: Date + Position + Salary Desired asked once) ──
   const [dateApplied, setDateApplied] = useState('');
@@ -343,11 +384,13 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
   const [presentCity, setPresentCity] = useState('');
   const [presentBarangay, setPresentBarangay] = useState('');
   const [presentStreet, setPresentStreet] = useState('');
+  const [presentAddressLoaded, setPresentAddressLoaded] = useState<string | null>(null);
   const [provRegion, setProvRegion] = useState('');
   const [provProvince, setProvProvince] = useState('');
   const [provCity, setProvCity] = useState('');
   const [provBarangay, setProvBarangay] = useState('');
   const [provStreet, setProvStreet] = useState('');
+  const [provAddressLoaded, setProvAddressLoaded] = useState<string | null>(null);
   const [travelTime, setTravelTime] = useState('');
   const [howOftenVisit, setHowOftenVisit] = useState('');
   const [contactResidence, setContactResidence] = useState('');
@@ -519,6 +562,178 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
       setDateApplied(iso.slice(0, 10));
     }
   }, [positionTitle, applicationDate]);
+
+  // Load any previously-submitted PDS so a refresh (or HR sending it back
+  // for revision) doesn't start from a blank form. Structured fields
+  // (siblings, education, work history, declarations, etc.) restore
+  // exactly since they're saved as JSON matching this form's shape.
+  // Present/Provincial Address were saved as a single combined string
+  // (not broken back into Region/Province/City/Barangay), so we restore
+  // that combined string into the Street line as a readable fallback and
+  // leave the dropdowns for the applicant to reselect if needed.
+  useEffect(() => {
+    if (!applicationId) {
+      setLoadingSaved(false);
+      return;
+    }
+    let active = true;
+    fetch(`/api/pds?application_id=${encodeURIComponent(applicationId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: SavedPds) => {
+        if (!active || !data) return;
+
+        setLastName(data.last_name ?? '');
+        setFirstName(data.first_name ?? '');
+        setMiddleName(data.middle_name ?? '');
+        setNickname(data.nickname ?? '');
+
+        if (data.present_address) {
+          setPresentStreet(data.present_address);
+          setPresentAddressLoaded(data.present_address);
+        }
+        if (data.provincial_address) {
+          setProvStreet(data.provincial_address);
+          setProvAddressLoaded(data.provincial_address);
+        }
+
+        setHowOftenVisit(data.how_often_visit_province ?? '');
+        setTravelTime(data.travel_time_minutes ?? '');
+        setContactResidence(data.residence_number ?? '');
+        setContactCellphone(data.cellphone ?? '');
+        setContactEmail(data.email ?? '');
+
+        const savedReligion = data.religion ?? '';
+        if (savedReligion && !RELIGION_OPTIONS.includes(savedReligion)) {
+          setReligion('Others');
+          setReligionOther(savedReligion);
+        } else {
+          setReligion(savedReligion);
+        }
+
+        setDesiredSalary(data.desired_salary ?? '');
+        setDob(data.date_of_birth ? String(data.date_of_birth).slice(0, 10) : '');
+        setPob(data.place_of_birth ?? '');
+        setNationality(data.nationality ?? '');
+        setSex(data.sex ?? '');
+        setAge(data.age ?? '');
+        setHeight(data.height ?? '');
+        setWeight(data.weight ?? '');
+        setCivilStatus(data.civil_status ?? '');
+        setSss(data.sss_number ?? '');
+        setTin(data.tin ?? '');
+        setPagibig(data.pagibig_number ?? '');
+        setPhilhealth(data.philhealth_number ?? '');
+        setHealthIssues(data.health_issues ?? '');
+
+        setFather({ name: data.father_name ?? '', address: data.father_address ?? '', occupation: data.father_occupation ?? '', age: data.father_age ?? '' });
+        setNaFather(Boolean(data.father_na));
+        setMother({ name: data.mother_name ?? '', address: data.mother_address ?? '', occupation: data.mother_occupation ?? '', age: data.mother_age ?? '' });
+        setNaMother(Boolean(data.mother_na));
+        setSpouse({ name: data.spouse_name ?? '', address: data.spouse_address ?? '', occupation: data.spouse_occupation ?? '', age: data.spouse_age ?? '' });
+        setNaSpouse(Boolean(data.spouse_na));
+
+        if (data.siblings && data.siblings.length > 0) setSiblings(data.siblings);
+        setNaSiblings(Boolean(data.siblings_na));
+
+        if (data.children) {
+          setChildren(data.children);
+          setChildrenCount(data.children.length >= 10 ? '10+' : String(data.children.length));
+        }
+
+        setHasRelativesInCompany((data.has_relative_in_company as 'yes' | 'no' | '') ?? '');
+        if (data.relatives && data.relatives.length > 0) setRelatives(data.relatives);
+
+        const naLevels: string[] = [];
+        if (data.elementary) setEduElementary(data.elementary); else naLevels.push('Elementary');
+        if (data.secondary) setEduSecondary(data.secondary); else naLevels.push('Secondary');
+        if (data.college) setEduCollege(data.college); else naLevels.push('College');
+        if (data.post_graduate) setEduPostGrad(data.post_graduate); else naLevels.push('Post-Graduate');
+        if (data.vocational) setEduVocational(data.vocational); else naLevels.push('Vocational');
+        setNaEduLevels(naLevels);
+        setWhyTookCourse(data.why_took_course ?? '');
+
+        if (data.licenses && data.licenses.length > 0) setLicenses(data.licenses);
+        setNaLicenses(Boolean(data.licenses_na));
+        if (data.gov_exams && data.gov_exams.length > 0) setGovExams(data.gov_exams);
+        setNaGovExams(Boolean(data.gov_exams_na));
+        if (data.trainings && data.trainings.length > 0) setTrainings(data.trainings);
+        setNaTrainings(Boolean(data.trainings_na));
+        if (data.activities && data.activities.length > 0) setActivities(data.activities);
+        setNaActivities(Boolean(data.activities_na));
+        setSpecialSkills(data.special_skills ?? '');
+
+        if (data.employment_record && data.employment_record.length > 0) {
+          setJobs(data.employment_record);
+          setNaWorkExperience(false);
+        } else {
+          setNaWorkExperience(true);
+        }
+
+        if (data.character_references && data.character_references.length > 0) setCharRefs(data.character_references);
+        setNaCharRefs(Boolean(data.character_references_na));
+        setEmergencyName(data.emergency_name ?? '');
+        setEmergencyRelationship(data.emergency_relationship ?? '');
+        setEmergencyTelephone(data.emergency_telephone ?? '');
+        setEmergencyAddress(data.emergency_address ?? '');
+
+        const decl = data.declarations ?? {};
+        setOutstandingLoans((decl.outstandingLoans as 'yes' | 'no' | '') ?? '');
+        setOutstandingLoansDetail(decl.outstandingLoansDetail ?? '');
+        setConvicted((decl.convicted as 'yes' | 'no' | '') ?? '');
+        setConvictedDetail(decl.convictedDetail ?? '');
+        setSurgery((decl.surgery as 'yes' | 'no' | '') ?? '');
+        setSurgeryDetail(decl.surgeryDetail ?? '');
+        setTerminated((decl.terminated as 'yes' | 'no' | '') ?? '');
+        setTerminatedDetail(decl.terminatedDetail ?? '');
+        setPendingApps((decl.pendingApps as 'yes' | 'no' | '') ?? '');
+        setPendingAppsDetail(decl.pendingAppsDetail ?? '');
+        setCaseFiled((decl.caseFiled as 'yes' | 'no' | '') ?? '');
+        setCaseFiledDetail(decl.caseFiledDetail ?? '');
+        setDoYouSmoke((decl.doYouSmoke as 'yes' | 'no' | '') ?? '');
+        setHowSoonStart(decl.howSoonStart ?? '');
+
+        const pp = (data.personality_profiling ?? {}) as Record<string, any>;
+        setResignTriggers(pp.resignTriggers ?? '');
+        setStayFactors(pp.stayFactors ?? '');
+        setHandleStress(pp.handleStress ?? '');
+        setCopeWithCriticism(pp.copeWithCriticism ?? '');
+        setHobbiesInterests(pp.hobbiesInterests ?? '');
+        if (Array.isArray(pp.strengths)) setStrengths(pp.strengths);
+        if (Array.isArray(pp.improvements)) setImprovements(pp.improvements);
+        if (Array.isArray(pp.coreValues)) setCoreValues(pp.coreValues);
+        setFuturePlans(pp.futurePlans ?? '');
+        setParentalSupport(pp.parentalSupport ?? '');
+        setFamilyMedicalCondition(pp.familyMedicalCondition ?? '');
+        setFamilyIssues(pp.familyIssues ?? '');
+        setSelfDescription(pp.selfDescription ?? '');
+
+        const wp = (data.work_preferences ?? {}) as Record<string, any>;
+        setWillingMonToSat(wp.willingMonToSat ?? '');
+        setWillingShifting(wp.willingShifting ?? '');
+        setWillingAnywhere(wp.willingAnywhere ?? '');
+        setIfNotWhy(wp.ifNotWhy ?? '');
+        if (Array.isArray(wp.areaOfAssignment)) setAreaOfAssignment(wp.areaOfAssignment);
+        setWillingTraining(wp.willingTraining ?? '');
+        setFreeLodging((wp.freeLodging as 'yes' | 'no' | '') ?? '');
+
+        setCertify(Boolean(data.certify_truth_correctness));
+        setESignature(data.signature_name ?? '');
+
+        if (data.photo_signed_url) { setPhoto(data.photo_signed_url); setPhotoConfirmed(true); }
+        if (data.signature_signed_url) setSignatureImage(data.signature_signed_url);
+        if (data.sketch_signed_url) {
+          setSketchImage(data.sketch_signed_url);
+          setSketchFileName(data.location_sketch_file_name ?? '');
+        }
+      })
+      .catch((err) => console.error('Load PDS error:', err))
+      .finally(() => {
+        if (active) setLoadingSaved(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [applicationId]);
 
   const f = (v: string) => v.trim().length > 0;
   const eduAllNA = naEduLevels.length === 5;
@@ -785,12 +1000,32 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
     );
   }
 
+  if (loadingSaved) {
+    return (
+      <div className="pt-3">
+        <div className="flex items-center gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
+          <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
+          <span>Loading your Personal Data Sheet...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-3 space-y-3">
       <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm mb-1" style={{ backgroundColor: '#FFFBEB', color: '#92400E' }}>
         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#D97706' }} />
         <span>Please fill out this Personal Data Sheet completely and accurately. This is required before you can proceed to the Assessment stage.</span>
       </div>
+
+      {(presentAddressLoaded || provAddressLoaded) && (
+        <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.cyanBg }}>
+          <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
+          <span style={{ color: T.navy }}>
+            We restored your previously-saved address into the Street field below. Please reselect Region/Province/City/Barangay if they look off.
+          </span>
+        </div>
+      )}
 
       <div className="rounded-xl p-4 flex items-center gap-4" style={{ backgroundColor: T.cyanBg }}>
         <div className="w-24 h-24 rounded-xl overflow-hidden border-2 flex items-center justify-center shrink-0 bg-white" style={{ borderColor: T.cyanBorder }}>
@@ -823,7 +1058,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{ backgroundColor: T.cyan }}>
                 Use this photo
               </button>
-              <button type="button" onClick={() => { setPhoto(null); setPhotoConfirmed(false); }}
+              <button type="button" onClick={() => { setPhoto(null); setPhotoFile(null); setPhotoConfirmed(false); }}
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-white hover:bg-black/5" style={{ color: T.gray }}>
                 x
               </button>
@@ -1240,7 +1475,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
                   <img src={signatureImage} alt="Uploaded signature" className="h-12 object-contain" />
                 </div>
                 <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSignatureImage(null)}
+                <button type="button" onClick={() => { setSignatureImage(null); setSignatureFile(null); }}
                   className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
                   x
                 </button>
@@ -1264,7 +1499,7 @@ export default function PersonalDataSheetContent({ isCurrent, onSubmit, applicat
                   <img src={sketchImage} alt="Residence sketch" className="h-12 object-contain" />
                 </div>
                 <button type="button" onClick={() => sketchInputRef.current?.click()} className="text-xs font-medium hover:underline" style={{ color: T.gray }}>Replace</button>
-                <button type="button" onClick={() => setSketchImage(null)}
+                <button type="button" onClick={() => { setSketchImage(null); setSketchFile(null); setSketchFileName(''); }}
                   className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold hover:bg-black/5" style={{ color: T.gray }}>
                   x
                 </button>

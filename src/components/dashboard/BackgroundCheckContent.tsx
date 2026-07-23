@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Check, Clock, Upload, X, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const T = {
@@ -18,16 +18,58 @@ const T = {
 const selectCls = 'px-3 py-2.5 text-sm rounded-lg border outline-none transition-colors focus:border-[#12B6D6]';
 const selectStyle: React.CSSProperties = { backgroundColor: '#F7F9FA',  color: '#0B2A4A' };
 
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+function validateFileSize(f: File): string | null {
+  if (f.size > MAX_FILE_SIZE_BYTES) {
+    return `File is too large. Max file size is ${MAX_FILE_SIZE_MB}MB.`;
+  }
+  return null;
+}
+
 export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, positionTitle, applicationId }: { isCurrent: boolean; onSubmit: () => void; fullName?: string; positionTitle?: string; applicationId: string | null }) {
   const [submitted, setSubmitted] = useState(false);
+  const [checkingExisting, setCheckingExisting] = useState(true);
   const [dateSigned, setDateSigned] = useState('');
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // On refresh, check if this application already has a submitted
+  // authorization form - if so, show the confirmation instead of a blank
+  // form asking the applicant to re-sign.
+  useEffect(() => {
+    if (!applicationId) {
+      setCheckingExisting(false);
+      return;
+    }
+    let active = true;
+    fetch(`/api/background-check?application_id=${encodeURIComponent(applicationId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { status?: string } | null) => {
+        if (!active) return;
+        if (data?.status === 'Submitted') setSubmitted(true);
+      })
+      .catch((err) => console.error('Load background check error:', err))
+      .finally(() => {
+        if (active) setCheckingExisting(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [applicationId]);
+
   const handleFile = (file: File) => {
+    const sizeError = validateFileSize(file);
+    if (sizeError) {
+      setFileError(sizeError);
+      return;
+    }
+    setFileError(null);
     setSignatureFile(file);
     const reader = new FileReader();
     reader.onload = () => setSignaturePreview(reader.result as string);
@@ -60,13 +102,24 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, 
     }
   };
 
+  if (checkingExisting) {
+    return (
+      <div className="pt-3">
+        <div className="flex items-center gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
+          <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
+          <span>Checking your authorization form...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (submitted) {
     return (
       <div className="pt-3">
         <div className="flex items-start gap-2.5 rounded-xl p-4 text-sm" style={{ backgroundColor: T.cyanBg }}>
           <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.cyan }} />
           <span style={{ color: T.navy }}>
-            Authorization form submitted. You&apos;ve automatically moved forward to the Department Interview stage.
+            Authorization form submitted. HR will review it and confirm your background check before you can proceed to the Job Offer stage.
           </span>
         </div>
       </div>
@@ -137,7 +190,7 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, 
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={signaturePreview} alt="E-signature preview" className="h-16 object-contain bg-white rounded" style={{ }} />
             <div className="flex-1 min-w-0 text-xs" style={{ color: T.gray }}>{signatureFile?.name}</div>
-            <button type="button" onClick={() => { setSignatureFile(null); setSignaturePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+            <button type="button" onClick={() => { setSignatureFile(null); setSignaturePreview(null); setFileError(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
               className="p-1.5 rounded-lg hover:bg-black/5 shrink-0">
               <X className="w-4 h-4" style={{ color: T.gray }} />
             </button>
@@ -148,10 +201,12 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, 
             style={{ }}>
             <Upload className="w-5 h-5" style={{ color: T.faint }} />
             <span className="text-xs font-medium" style={{ color: T.gray }}>Upload a photo of your signature</span>
+            <span className="text-[11px]" style={{ color: T.faint }}>Max file size: 10MB</span>
           </button>
         )}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+        {fileError && <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{fileError}</p>}
       </div>
 
       {submitError && (
@@ -178,7 +233,7 @@ export default function BackgroundCheckContent({ isCurrent, onSubmit, fullName, 
       {isCurrent && (
         <div className="flex items-center gap-2.5 rounded-xl p-3.5 text-sm" style={{ backgroundColor: T.bg, color: T.gray }}>
           <Clock className="w-4 h-4 shrink-0" style={{ color: T.faint }} />
-          <span>Once submitted, you&apos;ll automatically move forward to the Department Interview stage.</span>
+          <span>Once submitted, HR will review it and confirm before you can proceed to the Job Offer stage.</span>
         </div>
       )}
     </div>

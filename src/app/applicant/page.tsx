@@ -4,24 +4,17 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 /*
-This page currently handles both the demo application form and an in-page demo dashboard view.
-This is separate from the real src/app/dashboard/page.tsx used by authenticated non-demo users.
-TODO: reconcile these into one dashboard implementation once the backend is integrated,
-or clarify if the demo experience is intentionally meant to remain simplified and separate.
+This page handles the demo application form.
+The submitted data is then handed off to /dashboard (src/app/dashboard/page.tsx),
+which is the real dashboard used by authenticated non-demo users.
+TODO: reconcile the submit flow once the backend is integrated — the real bridge
+should use the persisted application record (likely via /api/applications) so the
+dashboard can render the freshly submitted data after redirect.
 */
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // Types
-// ─────────────────────────────────────────────────────────────────────────
-
-type DashboardTab = 'application' | 'status' | 'requirements'
-type ApplicationStatus =
-  | 'submitted'
-  | 'under_review'
-  | 'shortlisted'
-  | 'requirements'
-  | 'hired'
-  | 'rejected'
+// ─────────────────────────────────────────────────────────────
 
 interface FormData {
   fullName: string
@@ -45,77 +38,19 @@ const POSITIONS = [
   'Graphic Design Intern',
 ]
 
-// ─────────────────────────────────────────────────────────────────────────
-// Shared data (status flow, notifications, checklist)
-// ─────────────────────────────────────────────────────────────────────────
+const MAX_FILE_SIZE_MB = 10
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-const statusFlow: Array<{
-  key: ApplicationStatus
-  label: string
-  description: string
-}> = [
-  {
-    key: 'submitted',
-    label: 'Submitted',
-    description: 'The application has been received and is waiting in queue.',
-  },
-  {
-    key: 'under_review',
-    label: 'Under Review',
-    description: 'HR is evaluating your profile, resume, and position fit.',
-  },
-  {
-    key: 'shortlisted',
-    label: 'Shortlisted',
-    description: 'You are moving forward and can access the additional requirements tab.',
-  },
-  {
-    key: 'requirements',
-    label: 'Requirements',
-    description: 'Complete any requested follow-up documents or tasks.',
-  },
-  {
-    key: 'hired',
-    label: 'Hired',
-    description: 'Final offer has been approved and the process is complete.',
-  },
-  {
-    key: 'rejected',
-    label: 'Rejected',
-    description: 'The application cycle has ended for this role.',
-  },
-]
+function validateFileSize(f: File): string | null {
+  if (f.size > MAX_FILE_SIZE_BYTES) {
+    return `File is too large. Max file size is ${MAX_FILE_SIZE_MB}MB.`
+  }
+  return null
+}
 
-const notifications = [
-  {
-    title: 'Application submitted',
-    message: 'Your applicant record is now in the dashboard queue.',
-    time: 'Today · 9:24 AM',
-  },
-  {
-    title: 'Resume received',
-    message: 'The upload is stored in the application record for HR review.',
-    time: 'Today · 9:25 AM',
-  },
-  {
-    title: 'Requirements locked',
-    message: 'Additional steps will appear after you are shortlisted.',
-    time: 'Pending',
-  },
-]
-
-const checklist = [
-  'Personal information complete',
-  'Position selected',
-  'Resume uploaded',
-  'Waiting for HR review',
-]
-
-const currentStatus: ApplicationStatus = 'under_review'
-
-// ─────────────────────────────────────────────────────────────────────────
-// Application Form (matches the ARVIN screenshot)
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Application Form
+// ─────────────────────────────────────────────────────────────
 
 function ApplicationForm({
   onSubmit,
@@ -125,6 +60,7 @@ function ApplicationForm({
   const [form, setForm] = useState<FormData>(defaultFormData)
   const [dragging, setDragging] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+  const [fileError, setFileError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const set = (field: keyof FormData, value: string) => {
@@ -133,9 +69,17 @@ function ApplicationForm({
   }
 
   const handleFile = (file: File) => {
-    if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
-      set('resumeFile', file.name)
+    if (!(file.name.endsWith('.pdf') || file.name.endsWith('.docx'))) {
+      setFileError('Please upload a PDF or Word document (.pdf, .docx).')
+      return
     }
+    const sizeError = validateFileSize(file)
+    if (sizeError) {
+      setFileError(sizeError)
+      return
+    }
+    setFileError('')
+    set('resumeFile', file.name)
   }
 
   const validate = () => {
@@ -298,6 +242,7 @@ function ApplicationForm({
                     onClick={(ev) => {
                       ev.stopPropagation()
                       set('resumeFile', '')
+                      setFileError('')
                     }}
                     className="ml-1 text-gray-400 hover:text-red-500 transition-colors"
                   >
@@ -313,6 +258,7 @@ function ApplicationForm({
                 </>
               )}
             </div>
+            {fileError && <p className="text-xs text-red-500">{fileError}</p>}
           </div>
 
           <button
@@ -327,372 +273,20 @@ function ApplicationForm({
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Applicant Dashboard (shown AFTER the form is submitted)
-// ─────────────────────────────────────────────────────────────────────────
-
-function DashboardView({ formData }: { formData: FormData }) {
-  const [activeTab, setActiveTab] = useState<DashboardTab>('application')
-
-  const currentStatusIndex = statusFlow.findIndex((step) => step.key === currentStatus)
-  const isRequirementsUnlocked = currentStatusIndex >= 2
-
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fafc_0%,#eef2ff_45%,#e2e8f0_100%)] text-slate-950">
-      <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <header className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
-          <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.4fr_0.9fr] lg:px-8 lg:py-8">
-            <div className="space-y-5">
-              <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Applicant dashboard
-              </div>
-              <div className="space-y-3">
-                <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                  Keep your application moving in one place.
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                  This dashboard is focused on the applicant journey only: submit your details,
-                  watch your status, and unlock follow-up requirements once HR shortlists your
-                  profile.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <span className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-                  Current stage: {statusFlow[currentStatusIndex]?.label}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700">
-                  Requirements {isRequirementsUnlocked ? 'unlocked' : 'locked'}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700">
-                  Resume stored in Supabase
-                </span>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-              <div className="rounded-3xl border border-slate-200 bg-slate-950 px-4 py-4 text-white shadow-lg shadow-slate-950/10">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Application ID</p>
-                <p className="mt-3 text-lg font-semibold">APP-0147</p>
-                <p className="mt-2 text-sm text-slate-300">Linked to your applicant profile</p>
-              </div>
-              <div className="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Last update</p>
-                <p className="mt-3 text-lg font-semibold text-slate-950">Just now</p>
-                <p className="mt-2 text-sm text-slate-600">Status sync from HR activity</p>
-              </div>
-              <div className="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Next action</p>
-                <p className="mt-3 text-lg font-semibold text-slate-950">
-                  Wait for review results
-                </p>
-                <p className="mt-2 text-sm text-slate-600">Additional tasks appear after shortlist</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <section className="grid gap-6 lg:grid-cols-[1.35fr_0.95fr]">
-          <div className="space-y-6">
-            <div className="rounded-[2rem] border border-white/70 bg-white/85 p-4 shadow-[0_25px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Application workspace</h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Your submitted details, monitor status, and continue only when the current step allows it.
-                  </p>
-                </div>
-                <div className="inline-flex rounded-2xl bg-slate-100 p-1">
-                  {[
-                    { key: 'application', label: 'Application' },
-                    { key: 'status', label: 'Status' },
-                    { key: 'requirements', label: 'Requirements' },
-                  ].map((tab) => {
-                    const tabKey = tab.key as DashboardTab
-                    const lockedTab = tabKey === 'requirements' && !isRequirementsUnlocked
-
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => {
-                          if (!lockedTab) {
-                            setActiveTab(tabKey)
-                          }
-                        }}
-                        disabled={lockedTab}
-                        className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                          activeTab === tabKey
-                            ? 'bg-slate-900 text-white shadow'
-                            : lockedTab
-                              ? 'cursor-not-allowed text-slate-400'
-                              : 'text-slate-600 hover:bg-white hover:text-slate-900'
-                        }`}
-                      >
-                        {tab.label}
-                        {lockedTab ? ' · Locked' : ''}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-6">
-                {activeTab === 'application' && (
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Personal info
-                      </h3>
-                      <div className="mt-4 grid gap-4">
-                        <div className="space-y-2 text-sm font-medium text-slate-700">
-                          Full name
-                          <p className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
-                            {formData.fullName}
-                          </p>
-                        </div>
-                        <div className="space-y-2 text-sm font-medium text-slate-700">
-                          Email address
-                          <p className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
-                            {formData.email}
-                          </p>
-                        </div>
-                        <div className="space-y-2 text-sm font-medium text-slate-700">
-                          Contact number
-                          <p className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900">
-                            {formData.phone}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Position and resume
-                      </h3>
-                      <div className="mt-4 grid gap-4">
-                        <div className="space-y-2 text-sm font-medium text-slate-700">
-                          Position applied for
-                          <p className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900">
-                            {formData.position}
-                          </p>
-                        </div>
-                        <div className="space-y-2 text-sm font-medium text-slate-700">
-                          Resume upload
-                          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-                            {formData.resumeFile || 'No file uploaded'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'status' && (
-                  <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Status flow
-                      </h3>
-                      <ol className="mt-5 space-y-4">
-                        {statusFlow.map((step, index) => {
-                          const isComplete = index < currentStatusIndex
-                          const isCurrent = index === currentStatusIndex
-
-                          return (
-                            <li key={step.key} className="flex gap-4">
-                              <div
-                                className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
-                                  isComplete
-                                    ? 'border-emerald-500 bg-emerald-500 text-white'
-                                    : isCurrent
-                                      ? 'border-slate-900 bg-slate-900 text-white'
-                                      : 'border-slate-300 bg-white text-slate-400'
-                                }`}
-                              >
-                                {index + 1}
-                              </div>
-                              <div className="pb-4">
-                                <p className="font-semibold text-slate-950">{step.label}</p>
-                                <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">
-                                  {step.description}
-                                </p>
-                              </div>
-                            </li>
-                          )
-                        })}
-                      </ol>
-                    </div>
-
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Quick checklist
-                      </h3>
-                      <div className="mt-5 space-y-3">
-                        {checklist.map((item) => (
-                          <div key={item} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-semibold text-white">
-                              ✓
-                            </span>
-                            <span className="text-sm text-slate-700">{item}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-900 p-5 text-white">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                          Notification rule
-                        </p>
-                        <p className="mt-2 text-lg font-semibold">HR updates trigger alerts</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-300">
-                          When HR changes your status, send an email and an in-app notification so the
-                          applicant sees the update immediately.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'requirements' && (
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                    {isRequirementsUnlocked ? (
-                      <div className="grid gap-5 lg:grid-cols-[1fr_0.8fr]">
-                        <div>
-                          <h3 className="text-xl font-semibold text-slate-950">
-                            Additional requirements
-                          </h3>
-                          <p className="mt-2 text-sm leading-6 text-slate-500">
-                            This tab becomes available after your application reaches Shortlisted.
-                            Use it for documents, forms, or follow-up tasks requested by HR.
-                          </p>
-                          <div className="mt-5 space-y-3">
-                            <label className="block space-y-2 text-sm font-medium text-slate-700">
-                              Upload requirement file
-                              <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-5 text-slate-500">
-                                Select proof of enrollment, portfolio, or any requested document
-                              </div>
-                            </label>
-                            <label className="block space-y-2 text-sm font-medium text-slate-700">
-                              Notes for HR
-                              <textarea
-                                rows={4}
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
-                                placeholder="Add clarifications or availability notes"
-                              />
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                          <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                            Requirement status
-                          </h4>
-                          <div className="mt-4 space-y-3 text-sm text-slate-700">
-                            <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
-                              <span>Requirements tab unlocked</span>
-                              <span className="font-semibold text-emerald-700">Yes</span>
-                            </div>
-                            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                              <span>Documents received</span>
-                              <span className="font-semibold text-slate-900">Pending</span>
-                            </div>
-                            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                              <span>Final decision</span>
-                              <span className="font-semibold text-slate-900">Pending</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center">
-                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl">
-                          🔒
-                        </div>
-                        <h3 className="mt-4 text-xl font-semibold text-slate-950">
-                          Additional requirements are locked
-                        </h3>
-                        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                          This section unlocks only after your application reaches Shortlisted. Until
-                          then, keep your resume and personal details ready for HR review.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <aside className="space-y-6">
-            <div className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_25px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-              <h2 className="text-xl font-semibold text-slate-950">Application tracker</h2>
-              <div className="mt-5 space-y-3">
-                {statusFlow.map((step, index) => {
-                  const isComplete = index < currentStatusIndex
-                  const isCurrent = index === currentStatusIndex
-
-                  return (
-                    <div
-                      key={step.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        isCurrent
-                          ? 'border-slate-900 bg-slate-950 text-white'
-                          : isComplete
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
-                            : 'border-slate-200 bg-slate-50 text-slate-500'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-semibold">{step.label}</p>
-                        <span className="text-xs uppercase tracking-[0.18em]">
-                          {isCurrent ? 'Now' : isComplete ? 'Done' : 'Next'}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm leading-6">{step.description}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_25px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-              <h2 className="text-xl font-semibold text-slate-950">In-app notifications</h2>
-              <div className="mt-5 space-y-4">
-                {notifications.map((notification) => (
-                  <article key={notification.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-slate-950">{notification.title}</h3>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">{notification.message}</p>
-                      </div>
-                      <span className="whitespace-nowrap text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                        {notification.time}
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </aside>
-        </section>
-      </main>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Legacy dashboard view
-// ─────────────────────────────────────────────────────────────────────────
-
-// LEGACY: This in-page dashboard is kept for review only.
-// The normal submit flow now redirects to /dashboard instead of rendering this branch.
+// ─────────────────────────────────────────────────────────────
+// Page export
+// ─────────────────────────────────────────────────────────────
 
 export default function ApplicantDashboard() {
   const router = useRouter()
 
-  return <ApplicationForm onSubmit={() => {
-    // TODO: /dashboard still shows existing demo/mock/session data here.
-    // The real bridge should use the persisted application record (likely via /api/applications)
-    // so the dashboard can render the freshly submitted data after redirect.
-    router.push('/dashboard')
-  }} />
+  return (
+    <ApplicationForm
+      onSubmit={() => {
+        // TODO: pass the persisted application record (likely via /api/applications)
+        // so /dashboard can render the freshly submitted data after redirect.
+        router.push('/dashboard')
+      }}
+    />
+  )
 }

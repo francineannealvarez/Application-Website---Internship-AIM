@@ -30,6 +30,24 @@ async function uploadPdsFile(
   return { path, name: file.name, sizeLabel };
 }
 
+// Photo and signature live in the private `applicant-pds` bucket, and the
+// residence sketch in `applicant-location-sketch` - both need short-lived
+// signed URLs to be viewable/previewable in the browser, since plain
+// `file_path` values aren't public URLs for a private bucket.
+async function getSignedUrl(
+  supabaseAdmin: ReturnType<typeof createAdminClient>,
+  bucket: string,
+  path: string | null | undefined
+): Promise<string | null> {
+  if (!path) return null;
+  const { data, error } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 60);
+  if (error || !data) {
+    console.error(`Failed to sign URL for ${bucket}/${path}:`, error);
+    return null;
+  }
+  return data.signedUrl;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const applicationId = request.nextUrl.searchParams.get("application_id");
@@ -44,7 +62,23 @@ export async function GET(request: NextRequest) {
       where: { application_id: applicationId },
     });
 
-    return NextResponse.json(pds);
+    if (!pds) {
+      return NextResponse.json(null);
+    }
+
+    const supabaseAdmin = createAdminClient();
+    const [photoSignedUrl, signatureSignedUrl, sketchSignedUrl] = await Promise.all([
+      getSignedUrl(supabaseAdmin, "applicant-pds", pds.photo_file_path),
+      getSignedUrl(supabaseAdmin, "applicant-pds", pds.signature_file_path),
+      getSignedUrl(supabaseAdmin, "applicant-location-sketch", pds.location_sketch_file_path),
+    ]);
+
+    return NextResponse.json({
+      ...pds,
+      photo_signed_url: photoSignedUrl,
+      signature_signed_url: signatureSignedUrl,
+      sketch_signed_url: sketchSignedUrl,
+    });
   } catch (error) {
     console.error("Get PDS error:", error);
     return NextResponse.json(

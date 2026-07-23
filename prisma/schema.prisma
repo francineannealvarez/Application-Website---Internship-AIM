@@ -505,7 +505,7 @@ model applications {
   id                             String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   applicant_user_id              String?                     @db.Uuid
   full_name                      String
-  email                          String
+  email                           String
   phone                          String?
   job_id                         String                      @db.Uuid
   stage                          String                      @default("Applied")
@@ -546,6 +546,7 @@ model applications {
   applicants                     applicants                  @relation(fields: [applicant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users                          users?                      @relation(fields: [applicant_user_id], references: [id], onUpdate: NoAction)
   job_postings                   job_postings                @relation(fields: [job_id], references: [id], onUpdate: NoAction)
+  employees                      employees?
 
   @@index([applicant_user_id])
   @@index([job_id])
@@ -557,7 +558,7 @@ model applications {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model job_postings {
   id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title            String
+  title            String         @map("position")
   location         String?
   department       String?
   employment_type  String?
@@ -603,7 +604,7 @@ model applicant_pds {
   travel_time_minutes             String?
   residence_number                String?
   cellphone                       String?
-  email                           String?
+  email                            String?
   religion                        String?
   desired_salary                  String?
   date_of_birth                   DateTime?    @db.Date
@@ -776,6 +777,23 @@ model hr_profiles {
   role       String
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   users      users     @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model employees {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id       String       @unique @db.Uuid
+  employee_id          String       @unique
+  full_name            String
+  position             String?
+  department           String?
+  start_date           DateTime?    @db.Date
+  probation_start_date DateTime?    @db.Date
+  created_at           DateTime     @default(now()) @db.Timestamptz(6)
+  probation_end_date   DateTime?    @default(dbgenerated("((probation_start_date + '6 mons'::interval))::date")) @db.Date
+  applications         applications @relation(fields: [application_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }
