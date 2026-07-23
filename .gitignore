@@ -43,3 +43,5 @@ next-env.d.ts
 # uploaded files (contain applicant personal data - never commit)
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+backup_uploads/
